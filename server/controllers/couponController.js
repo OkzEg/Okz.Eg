@@ -1,81 +1,67 @@
-const Coupon = require('../models/Coupon');
+const prisma = require('../lib/prisma');
 
-// @desc    Get all coupons
-// @route   GET /api/coupons
-// @access  Private/Admin
-const getCoupons = async (req, res) => {
+const listCoupons = async (req, res) => {
   try {
-    const coupons = await Coupon.find({});
+    const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
     res.json(coupons);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Create a coupon
-// @route   POST /api/coupons
-// @access  Private/Admin
 const createCoupon = async (req, res) => {
-  const { code, discountPercentage } = req.body;
-
   try {
-    const couponExists = await Coupon.findOne({ code });
-
-    if (couponExists) {
-      res.status(400);
-      throw new Error('Coupon code already exists');
+    const { code, discountPercentage, isActive } = req.body;
+    if (!code || discountPercentage == null) {
+      return res.status(400).json({ message: 'Code and discountPercentage required' });
     }
-
-    const coupon = await Coupon.create({
-      code,
-      discountPercentage,
+    const coupon = await prisma.coupon.create({
+      data: {
+        code: code.toUpperCase(),
+        discountPercentage: Number(discountPercentage),
+        isActive: isActive !== false,
+      },
     });
-
     res.status(201).json(coupon);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-// @desc    Delete a coupon
-// @route   DELETE /api/coupons/:id
-// @access  Private/Admin
-const deleteCoupon = async (req, res) => {
-  try {
-    const coupon = await Coupon.findById(req.params.id);
-
-    if (coupon) {
-      await coupon.deleteOne();
-      res.json({ message: 'Coupon removed' });
-    } else {
-      res.status(404);
-      throw new Error('Coupon not found');
-    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Validate coupon
-// @route   POST /api/coupons/validate
-// @access  Private
-const validateCoupon = async (req, res) => {
-    const { code } = req.body;
-    try {
-        const coupon = await Coupon.findOne({ code, isActive: true });
-        if (coupon) {
-            res.json({ 
-                _id: coupon._id,
-                code: coupon.code,
-                discountPercentage: coupon.discountPercentage
-            });
-        } else {
-            res.status(404);
-            throw new Error('Invalid or expired coupon');
-        }
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-}
+const updateCoupon = async (req, res) => {
+  try {
+    const data = { ...req.body };
+    if (data.code) data.code = data.code.toUpperCase();
+    const coupon = await prisma.coupon.update({
+      where: { id: req.params.id },
+      data,
+    });
+    res.json(coupon);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-module.exports = { getCoupons, createCoupon, deleteCoupon, validateCoupon };
+const deleteCoupon = async (req, res) => {
+  try {
+    await prisma.coupon.delete({ where: { id: req.params.id } });
+    res.json({ message: 'Coupon deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const validateCoupon = async (req, res) => {
+  try {
+    const code = (req.body.code || req.query.code || '').toUpperCase();
+    const coupon = await prisma.coupon.findUnique({ where: { code } });
+    if (!coupon || !coupon.isActive) {
+      return res.status(404).json({ message: 'Invalid coupon' });
+    }
+    res.json(coupon);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { listCoupons, createCoupon, updateCoupon, deleteCoupon, validateCoupon };

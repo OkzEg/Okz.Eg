@@ -1,86 +1,193 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { Container } from 'react-bootstrap';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import Header from './components/Header';
-import Footer from './components/Footer';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
+import StoreHeader from './components/store/StoreHeader';
+import StoreFooter from './components/store/StoreFooter';
+import StaffLayout from './components/staff/StaffLayout';
+import { defaultStaffPage, isStaff } from './utils/permissions';
+
 import HomePage from './pages/HomePage';
+import ShopPage from './pages/ShopPage';
+import ProductPage from './pages/ProductPage';
+import CartPage from './pages/CartPage';
+import WishlistPage from './pages/WishlistPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import CartPage from './pages/CartPage';
-import ProfilePage from './pages/ProfilePage';
-import ProductPage from './pages/ProductPage';
-import AdminPromotionsPage from './pages/AdminPromotionsPage';
-import AdminRevenuePage from './pages/AdminRevenuePage';
-import AdminReviewsPage from './pages/AdminReviewsPage';
-import CreateProductPage from './pages/CreateProductPage';
-import EditProductPage from './pages/EditProductPage';
-import OrderListPage from './pages/OrderListPage';
-import OrderPage from './pages/OrderPage';
-import PaymentMethodPage from './pages/PaymentMethodPage';
-import ShopPage from './pages/ShopPage';
-import AdminOrderListPage from './pages/AdminOrderListPage';
-import AdminCarouselPage from './pages/AdminCarouselPage';
-import WishlistPage from './pages/WishlistPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsPage from './pages/TermsPage';
-import ReturnPolicyPage from './pages/ReturnPolicyPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ForgotPasswordOtpPage from './pages/ForgotPasswordOtpPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
+// Dashboard is the staff landing page — load eagerly so the shell isn't blank
+import StaffDashboard from './pages/staff/Dashboard';
 
-const AppContent = () => {
-  const location = useLocation();
-  const hideHeader = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/forgot-password' || location.pathname === '/forgot-password-otp' || location.pathname.startsWith('/reset-password');
-  const hideFooter = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/forgot-password' || location.pathname === '/forgot-password-otp' || location.pathname.startsWith('/reset-password');
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const OrderPage = lazy(() => import('./pages/OrderPage'));
+const PrivacyPage = lazy(() =>
+  import('./pages/LegalPages').then((m) => ({ default: m.PrivacyPage }))
+);
+const TermsPage = lazy(() =>
+  import('./pages/LegalPages').then((m) => ({ default: m.TermsPage }))
+);
+const ReturnsPage = lazy(() =>
+  import('./pages/LegalPages').then((m) => ({ default: m.ReturnsPage }))
+);
 
+const StaffProducts = lazy(() => import('./pages/staff/Products'));
+const StaffOrders = lazy(() => import('./pages/staff/Orders'));
+const StaffDeliveries = lazy(() => import('./pages/staff/Deliveries'));
+const StaffProblems = lazy(() => import('./pages/staff/Problems'));
+const StaffUsers = lazy(() => import('./pages/staff/Users'));
+const StaffSlides = lazy(() => import('./pages/staff/Slides'));
+const StaffPromotions = lazy(() => import('./pages/staff/Promotions'));
+const StaffFinance = lazy(() => import('./pages/staff/Finance'));
+
+const STAFF_PREFETCH = [
+  () => import('./pages/staff/Products'),
+  () => import('./pages/staff/Orders'),
+  () => import('./pages/staff/Deliveries'),
+  () => import('./pages/staff/Problems'),
+  () => import('./pages/staff/Users'),
+  () => import('./pages/staff/Slides'),
+  () => import('./pages/staff/Promotions'),
+  () => import('./pages/staff/Finance'),
+];
+
+function PageLoader() {
   return (
-    <div className="d-flex flex-column min-vh-100">
-      <ToastContainer position="top-center" />
-      {!hideHeader && <Header />}
-      <main className='py-3 flex-grow-1'>
-        <Container>
-          <Routes>
-            <Route path='/' element={<HomePage />} />
-            <Route path='/shop' element={<ShopPage />} />
-            <Route path='/product/:id' element={<ProductPage />} />
-            <Route path='/login' element={<LoginPage />} />
-            <Route path='/signup' element={<SignupPage />} />
-            <Route path='/forgot-password' element={<ForgotPasswordPage />} />
-            <Route path='/forgot-password-otp' element={<ForgotPasswordOtpPage />} />
-            <Route path='/reset-password/:resetToken' element={<ResetPasswordPage />} />
-            <Route path='/cart' element={<CartPage />} />
-            <Route path='/payment' element={<PaymentMethodPage />} />
-            <Route path='/profile' element={<ProfilePage />} />
-            <Route path='/wishlist' element={<WishlistPage />} />
-            <Route path='/orders' element={<OrderListPage />} />
-            <Route path='/order/:id' element={<OrderPage />} />
-            
-            <Route path='/admin/promotions' element={<AdminPromotionsPage />} />
-            <Route path='/admin/revenue' element={<AdminRevenuePage />} />
-            <Route path='/admin/reviews' element={<AdminReviewsPage />} />
-            <Route path='/admin/orders' element={<AdminOrderListPage />} />
-            <Route path='/admin/carousel' element={<AdminCarouselPage />} />
-            <Route path='/admin/product/create' element={<CreateProductPage />} />
-            <Route path='/admin/product/:id/edit' element={<EditProductPage />} />
-            
-            <Route path='/privacy' element={<PrivacyPolicyPage />} />
-            <Route path='/terms' element={<TermsPage />} />
-            <Route path='/returns' element={<ReturnPolicyPage />} />
-          </Routes>
-        </Container>
-      </main>
-      {!hideFooter && <Footer />}
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="h-8 w-8 rounded-full border-2 border-wheat border-t-transparent animate-spin" />
     </div>
   );
-};
+}
 
-const App = () => {
+function StaffSkeleton() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <div className="animate-pulse space-y-6">
+      <div className="space-y-2">
+        <div className="h-8 w-48 rounded bg-timber-200" />
+        <div className="h-4 w-64 rounded bg-timber-100" />
+      </div>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-24 rounded-xl border border-timber-100 bg-white" />
+        ))}
+      </div>
+      <div className="h-72 rounded-xl border border-timber-100 bg-white" />
+    </div>
   );
-};
+}
 
-export default App;
+function StaffRoute({ page, children }) {
+  return (
+    <StaffLayout page={page}>
+      <Suspense fallback={<StaffSkeleton />}>{children}</Suspense>
+    </StaffLayout>
+  );
+}
+
+function PrefetchStaffChunks() {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user || !isStaff(user)) return undefined;
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
+    const id = idle(() => {
+      STAFF_PREFETCH.forEach((load) => load());
+    });
+    return () => {
+      if (window.cancelIdleCallback) window.cancelIdleCallback(id);
+      else clearTimeout(id);
+    };
+  }, [user]);
+  return null;
+}
+
+function StoreShell({ children }) {
+  const location = useLocation();
+  const isStaffRoute = location.pathname.startsWith('/staff');
+  const hideChrome = ['/login', '/signup'].includes(location.pathname) || isStaffRoute;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {!hideChrome && <StoreHeader />}
+      <div className="flex-1">
+        <Suspense fallback={<PageLoader />}>{children}</Suspense>
+      </div>
+      {!hideChrome && <StoreFooter />}
+    </div>
+  );
+}
+
+function RequireCustomer({ children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function StaffHome() {
+  const { user } = useAuth();
+  if (!user || !isStaff(user)) return <Navigate to="/login" replace />;
+  return <Navigate to={defaultStaffPage(user.role)} replace />;
+}
+
+function AppRoutes() {
+  return (
+    <StoreShell>
+      <PrefetchStaffChunks />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/shop" element={<ShopPage />} />
+        <Route path="/product/:id" element={<ProductPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
+        <Route path="/checkout" element={<RequireCustomer><CheckoutPage /></RequireCustomer>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/account" element={<RequireCustomer><AccountPage /></RequireCustomer>} />
+        <Route path="/order/:id" element={<RequireCustomer><OrderPage /></RequireCustomer>} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/returns" element={<ReturnsPage />} />
+
+        <Route path="/staff" element={<StaffHome />} />
+        <Route path="/staff/dashboard" element={<StaffRoute page="dashboard"><StaffDashboard /></StaffRoute>} />
+        <Route path="/staff/products" element={<StaffRoute page="products"><StaffProducts /></StaffRoute>} />
+        <Route path="/staff/orders" element={<StaffRoute page="orders"><StaffOrders /></StaffRoute>} />
+        <Route path="/staff/deliveries" element={<StaffRoute page="deliveries"><StaffDeliveries /></StaffRoute>} />
+        <Route path="/staff/problems" element={<StaffRoute page="problems"><StaffProblems /></StaffRoute>} />
+        <Route path="/staff/users" element={<StaffRoute page="users"><StaffUsers /></StaffRoute>} />
+        <Route path="/staff/slides" element={<StaffRoute page="slides"><StaffSlides /></StaffRoute>} />
+        <Route path="/staff/promotions" element={<StaffRoute page="promotions"><StaffPromotions /></StaffRoute>} />
+        <Route path="/staff/finance" element={<StaffRoute page="finance"><StaffFinance /></StaffRoute>} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </StoreShell>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ToastContainer
+              position="top-center"
+              theme="light"
+              limit={3}
+              newestOnTop
+              closeOnClick
+              hideProgressBar={false}
+              icon={false}
+              toastClassName="okz-toast"
+              bodyClassName="okz-toast-body"
+              progressClassName="okz-toast-progress"
+            />
+            <AppRoutes />
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}

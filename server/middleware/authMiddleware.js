@@ -1,38 +1,31 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
-const protect = async (req, res, next) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
+/** Auth from JWT only — role/id are already in the token (no DB round-trip per request). */
+const protect = (req, res, next) => {
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
-      token = req.headers.authorization.split(' ')[1];
-
+      const token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      req.user = await User.findById(decoded.id).select('-password');
-
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(401).json({ message: 'Not authorized, token failed' });
+      if (!decoded?.id || !decoded?.role) {
+        return res.status(401).json({ message: 'Not authorized, token invalid' });
+      }
+      req.user = { id: decoded.id, role: decoded.role };
+      return next();
+    } catch {
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
-
-  if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
-  }
+  return res.status(401).json({ message: 'Not authorized, no token' });
 };
 
-const admin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
-    next();
-  } else {
-    res.status(401).json({ message: 'Not authorized as an admin' });
-  }
+const adminOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') return next();
+  return res.status(403).json({ message: 'Admin access required' });
 };
 
-module.exports = { protect, admin };
+const opsOrAdmin = (req, res, next) => {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'ops')) return next();
+  return res.status(403).json({ message: 'Ops or admin access required' });
+};
+
+module.exports = { protect, adminOnly, opsOrAdmin };

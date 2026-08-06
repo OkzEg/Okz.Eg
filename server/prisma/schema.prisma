@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  customer
+  ops
+  admin
+}
+
+enum ProductType {
+  shoe
+  belt
+  wallet
+  bundle
+  shoe_lace
+  socks
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  out_for_delivery
+  delivered
+  canceled
+  problem
+}
+
+enum ProblemStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(customer)
+  phone        String?
+  address      Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders           Order[]
+  problemRequests  ProblemRequest[] @relation("CustomerProblems")
+  createdProblems  ProblemRequest[] @relation("CreatedProblems")
+}
+
+model Product {
+  id           String      @id @default(uuid())
+  name         String
+  description  String
+  price        Decimal     @db.Decimal(10, 2)
+  type         ProductType
+  photos       String[]
+  colors       String[]
+  sizes        String[]    @default([])
+  stock        Int         @default(0)
+  isSaleActive Boolean     @default(false)
+  salePrice    Decimal?    @db.Decimal(10, 2)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  orderItems OrderItem[]
+}
+
+model Slide {
+  id            String   @id @default(uuid())
+  cloudinaryUrl String
+  title         String   @default("New Arrival")
+  description   String   @default("Shop the collection")
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Coupon {
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  discountPercentage Int
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  orders Order[]
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  userId          String
+  status          OrderStatus @default(pending)
+  paymentMethod   String
+  shippingAddress Json
+  itemsPrice      Decimal     @db.Decimal(10, 2)
+  shippingPrice   Decimal     @db.Decimal(10, 2) @default(0)
+  discountAmount  Decimal     @db.Decimal(10, 2) @default(0)
+  totalPrice      Decimal     @db.Decimal(10, 2)
+  couponId        String?
+  couponCode      String?
+  isPaid          Boolean     @default(false)
+  paidAt          DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  coupon   Coupon?       @relation(fields: [couponId], references: [id])
+  items    OrderItem[]
+  problems ProblemRequest[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  name      String
+  qty       Int
+  image     String
+  price     Decimal @db.Decimal(10, 2)
+  color     String?
+  size      String?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model ProblemRequest {
+  id          String        @id @default(uuid())
+  orderId     String
+  customerId  String
+  createdById String
+  subject     String
+  details     String
+  status      ProblemStatus @default(open)
+  resolution  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer  User  @relation("CustomerProblems", fields: [customerId], references: [id])
+  createdBy User  @relation("CreatedProblems", fields: [createdById], references: [id])
+}
+
+model SiteAsset {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  cloudinaryUrl String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

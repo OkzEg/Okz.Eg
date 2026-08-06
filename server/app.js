@@ -1,10 +1,9 @@
 const express = require('express');
 const dotenv = require('dotenv');
-// Load env vars before importing routes that might use them
 dotenv.config();
 
 const cors = require('cors');
-const path = require('path');
+const compression = require('compression');
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
@@ -12,12 +11,16 @@ const orderRoutes = require('./routes/orderRoutes');
 const userRoutes = require('./routes/userRoutes');
 const slideRoutes = require('./routes/slideRoutes');
 const couponRoutes = require('./routes/couponRoutes');
+const problemRoutes = require('./routes/problemRoutes');
 
 const app = express();
 
+app.disable('x-powered-by');
+app.use(compression());
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Keep JSON small by default; uploads/base64 slides use a higher limit only on those routes
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -26,13 +29,14 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/slides', slideRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/problems', problemRoutes);
 
-// Make uploads folder static
-const dirname = path.resolve();
-app.use('/uploads', express.static(path.join(dirname, '/uploads')));
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true });
+});
 
 app.get('/', (req, res) => {
-  res.send('API is running...');
+  res.send('OKZ API is running');
 });
 
 module.exports = app;

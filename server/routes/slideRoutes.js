@@ -1,9 +1,22 @@
 const express = require('express');
-const router = express.Router();
-const { protect, admin } = require('../middleware/authMiddleware');
-const { getSlides, createSlide, deleteSlide } = require('../controllers/slideController');
+const {
+  listSlides,
+  createSlide,
+  updateSlide,
+  deleteSlide,
+  cloudinaryStatus,
+} = require('../controllers/slideController');
+const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-router.route('/').get(getSlides).post(protect, admin, createSlide);
-router.route('/:id').delete(protect, admin, deleteSlide);
+const router = express.Router();
+
+// Base64 slide uploads need a higher body limit than the global 2mb cap
+router.use(express.json({ limit: '8mb' }));
+
+router.get('/', listSlides);
+router.get('/cloudinary-status', protect, adminOnly, cloudinaryStatus);
+router.post('/', protect, adminOnly, createSlide);
+router.put('/:id', protect, adminOnly, updateSlide);
+router.delete('/:id', protect, adminOnly, deleteSlide);
 
 module.exports = router;

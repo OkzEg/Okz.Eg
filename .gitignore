@@ -1,3 +1,29 @@
-node_modules
-.DS_Store
+# Dependencies
+node_modules/
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Builds
+dist/
+build/
+client/dist/
+
+# Prisma
+server/prisma/*.db
+
+# Legacy / local runtime
+server/.wwebjs_auth/
+server/.wwebjs_cache/
+server/uploads/

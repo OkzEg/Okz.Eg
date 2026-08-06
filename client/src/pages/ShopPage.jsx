@@ -1,226 +1,431 @@
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form, Accordion, Badge } from 'react-bootstrap';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { getImageUrl } from '../utils/imagePath';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
+import api from '../api/axios';
+import ProductCard from '../components/store/ProductCard';
+import { PRODUCT_TYPES } from '../utils/helpers';
+import EmptyState from '../components/ui/EmptyState';
 
-const ShopPage = () => {
-  const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
+const SORT_OPTIONS = [
+  { value: 'recommended', label: 'Recommended' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'price_asc', label: 'Price: Low to High' },
+  { value: 'price_desc', label: 'Price: High to Low' },
+];
+
+export default function ShopPage() {
+  const [params, setParams] = useSearchParams();
+  const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Filters
-  const [sortOption, setSortOption] = useState('newest');
-  const [selectedColor, setSelectedColor] = useState('All');
-  const [selectedSize, setSelectedSize] = useState('All');
-  
-  // Derived lists
-  const [availableColors, setAvailableColors] = useState(['All']);
-  const [availableSizes, setAvailableSizes] = useState(['All']);
+  const [mobileFilters, setMobileFilters] = useState(false);
 
-  const navigate = useNavigate();
+  const selectedTypes = useMemo(() => {
+    if (params.get('types')) return params.get('types').split(',').filter(Boolean);
+    if (params.get('type')) return [params.get('type')];
+    return [];
+  }, [params]);
+
+  const selectedColors = useMemo(
+    () => (params.get('colors') ? params.get('colors').split(',').filter(Boolean) : []),
+    [params]
+  );
+  const selectedSizes = useMemo(
+    () => (params.get('sizes') ? params.get('sizes').split(',').filter(Boolean) : []),
+    [params]
+  );
+
+  const sort = params.get('sort') || 'recommended';
+  const [minInput, setMinInput] = useState(() => params.get('min') || '');
+  const [maxInput, setMaxInput] = useState(() => params.get('max') || '');
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const { data } = await axios.get('/api/products'); // Fetch all
-        setProducts(data);
-        setFilteredProducts(data);
-        
-        // Extract unique options
-        const colors = new Set(['All']);
-        const sizes = new Set(['All']);
-        
-        data.forEach(p => {
-            if(p.colors) p.colors.forEach(c => colors.add(c));
-            if(p.sizes) p.sizes.forEach(s => sizes.add(s));
-        });
-        
-        setAvailableColors(Array.from(colors));
-        setAvailableSizes(Array.from(sizes));
-        setLoading(false);
-      } catch (error) {
-        console.error(error);
-        setLoading(false);
-      }
-    };
-    fetchProducts();
+    setLoading(true);
+    api
+      .get('/products')
+      .then((r) => setAllProducts(r.data))
+      .catch(() => setAllProducts([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-      let result = [...products];
-
-      // 1. Filter by Color
-      if (selectedColor !== 'All') {
-          result = result.filter(p => p.colors && p.colors.includes(selectedColor));
+  const patchParams = (updates) => {
+    const next = new URLSearchParams(params);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === '' || value == null || (Array.isArray(value) && value.length === 0)) {
+        next.delete(key);
+      } else if (Array.isArray(value)) {
+        next.set(key, value.join(','));
+      } else {
+        next.set(key, String(value));
       }
-
-      // 2. Filter by Size
-      if (selectedSize !== 'All') {
-          result = result.filter(p => p.sizes && p.sizes.includes(selectedSize));
-      }
-
-      // 3. Sort
-      if (sortOption === 'low-high') {
-          result.sort((a, b) => a.price - b.price);
-      } else if (sortOption === 'high-low') {
-          result.sort((a, b) => b.price - a.price);
-      } else if (sortOption === 'newest') {
-          // Assuming createdAt or _id (Mongodb IDs have timestamps)
-          // Simple string comparison for ID works for "roughly" created time if no date field
-          result.sort((a, b) => b._id.localeCompare(a._id));
-      }
-
-      setFilteredProducts(result);
-  }, [products, sortOption, selectedColor, selectedSize]);
-
-  // Helper for cart (simplified version of Home/Product page logic)
-  const addToCartHandler = (product) => {
-       let cartItems = localStorage.getItem('cartItems') ? JSON.parse(localStorage.getItem('cartItems')) : [];
-       const existItem = cartItems.find((x) => x.product === product._id);
-       
-       if (existItem) {
-         cartItems = cartItems.map((x) => x.product === existItem.product ? { ...existItem, qty: existItem.qty + 1 } : x);
-       } else {
-         cartItems.push({ ...product, product: product._id, qty: 1 });
-       }
-       
-       localStorage.setItem('cartItems', JSON.stringify(cartItems));
-       window.dispatchEvent(new Event('cartUpdated'));
-       navigate('/cart');
+    });
+    setParams(next);
   };
 
-  return (
-    <Container className="mt-5">
-      <h2 className="mb-4 text-center" style={{ fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>SHOP ALL</h2>
-      
-      <Row>
-        {/* Sidebar Filters */}
-        <Col md={3} className="mb-4">
-            <div className="p-3 bg-light rounded shadow-sm sticky-top" style={{ top: '20px', zIndex: 1 }}>
-                <h5 className="mb-3">Filters</h5>
-                
-                {/* Sort */}
-                <Form.Group className="mb-4">
-                    <Form.Label className="fw-bold">Sort By</Form.Label>
-                    <Form.Select 
-                        value={sortOption} 
-                        onChange={(e) => setSortOption(e.target.value)}
-                        className="shadow-sm border-0"
-                    >
-                        <option value="newest">Newest Arrivals</option>
-                        <option value="low-high">Price: Low to High</option>
-                        <option value="high-low">Price: High to Low</option>
-                    </Form.Select>
-                </Form.Group>
+  const parseBound = (raw) => {
+    const trimmed = String(raw ?? '').trim();
+    if (trimmed === '') return null;
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : null;
+  };
 
-                {/* Colors */}
-                <div className="mb-4">
-                    <label className="fw-bold mb-2 d-block">Color</label>
-                    <div className="d-flex flex-wrap gap-2">
-                        {availableColors.map(c => (
-                            <Badge 
-                                key={c}
-                                bg={selectedColor === c ? 'dark' : 'secondary'}
-                                className={`p-2 cursor-pointer ${selectedColor !== c ? 'opacity-50' : ''}`}
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => setSelectedColor(c)}
-                            >
-                                {c}
-                            </Badge>
-                        ))}
-                    </div>
-                </div>
+  const applyPriceToUrl = () => {
+    const min = parseBound(minInput);
+    const max = parseBound(maxInput);
+    patchParams({
+      min: min == null ? '' : String(min),
+      max: max == null ? '' : String(max),
+    });
+  };
 
-                {/* Sizes */}
-                <div className="mb-4">
-                    <label className="fw-bold mb-2 d-block">Size</label>
-                    <div className="d-flex flex-wrap gap-2">
-                        {availableSizes.map(s => (
-                            <Badge 
-                                key={s}
-                                bg={selectedSize === s ? 'dark' : 'secondary'}
-                                className={`p-2 cursor-pointer ${selectedSize !== s ? 'opacity-50' : ''}`}
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => setSelectedSize(s)}
-                            >
-                                {s}
-                            </Badge>
-                        ))}
-                    </div>
-                </div>
-                
-                {/* Reset Filters */}
-                <Button 
-                    variant="outline-dark" 
-                    className="w-100 mt-2"
-                    onClick={() => {
-                        setSelectedColor('All');
-                        setSelectedSize('All');
-                        setSortOption('newest');
-                    }}
+  const toggleType = (value) => {
+    const set = new Set(selectedTypes);
+    if (set.has(value)) set.delete(value);
+    else set.add(value);
+    const next = new URLSearchParams(params);
+    next.delete('type');
+    if (set.size) next.set('types', [...set].join(','));
+    else next.delete('types');
+    setParams(next);
+  };
+
+  const toggleInList = (key, current, value) => {
+    const set = new Set(current);
+    if (set.has(value)) set.delete(value);
+    else set.add(value);
+    patchParams({ [key]: [...set] });
+  };
+
+  const clearFilters = () => {
+    setParams(new URLSearchParams());
+    setMinInput('');
+    setMaxInput('');
+  };
+
+  const effectivePrice = (p) =>
+    p.isSaleActive && p.salePrice != null ? Number(p.salePrice) : Number(p.price);
+
+  const availableColors = useMemo(() => {
+    const set = new Set();
+    allProducts.forEach((p) => (p.colors || []).forEach((c) => set.add(c)));
+    return [...set].sort();
+  }, [allProducts]);
+
+  const availableSizes = useMemo(() => {
+    const set = new Set();
+    allProducts.forEach((p) => (p.sizes || []).forEach((s) => set.add(s)));
+    return [...set].sort((a, b) => {
+      const na = Number(a);
+      const nb = Number(b);
+      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+      return String(a).localeCompare(String(b));
+    });
+  }, [allProducts]);
+
+  const products = useMemo(() => {
+    let list = [...allProducts];
+
+    if (selectedTypes.length) {
+      list = list.filter((p) => selectedTypes.includes(p.type));
+    }
+    if (selectedColors.length) {
+      list = list.filter((p) => (p.colors || []).some((c) => selectedColors.includes(c)));
+    }
+    if (selectedSizes.length) {
+      list = list.filter((p) => (p.sizes || []).some((s) => selectedSizes.includes(s)));
+    }
+
+    let min = parseBound(minInput);
+    let max = parseBound(maxInput);
+    if (min != null && max != null && min > max) {
+      const swap = min;
+      min = max;
+      max = swap;
+    }
+    if (min != null) {
+      list = list.filter((p) => effectivePrice(p) >= min);
+    }
+    if (max != null) {
+      list = list.filter((p) => effectivePrice(p) <= max);
+    }
+
+    switch (sort) {
+      case 'price_asc':
+        list.sort((a, b) => effectivePrice(a) - effectivePrice(b));
+        break;
+      case 'price_desc':
+        list.sort((a, b) => effectivePrice(b) - effectivePrice(a));
+        break;
+      case 'newest':
+        list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      default:
+        list.sort((a, b) => Number(b.isSaleActive) - Number(a.isSaleActive));
+    }
+
+    return list;
+  }, [
+    allProducts,
+    selectedTypes,
+    selectedColors,
+    selectedSizes,
+    minInput,
+    maxInput,
+    sort,
+  ]);
+
+  const FiltersPanel = ({ onClose, embedded = false }) => (
+    <div
+      className={
+        embedded
+          ? 'flex h-full flex-col'
+          : 'flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-timber-200/80 bg-white p-5 shadow-[0_12px_40px_rgba(61,46,34,0.08)]'
+      }
+    >
+      <div className="mb-5 shrink-0">
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-timber-400">
+          Filters
+        </p>
+        <h2 className="mt-1.5 font-display text-2xl tracking-wide text-timber-800">
+          Find your gear
+        </h2>
+        <p className="mt-1 text-[13px] text-timber-400">Results update as you filter.</p>
+      </div>
+
+      <div className="flex-1 space-y-5 overflow-y-auto pr-1">
+        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+            Category
+          </label>
+          <div className="space-y-2.5">
+            {PRODUCT_TYPES.map((t) => (
+              <label
+                key={t.value}
+                className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.includes(t.value)}
+                  onChange={() => toggleType(t.value)}
+                  className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {availableColors.length > 0 && (
+          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+              Colors
+            </label>
+            <div className="max-h-40 space-y-2.5 overflow-y-auto">
+              {availableColors.map((c) => (
+                <label
+                  key={c}
+                  className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
                 >
-                    Reset Filters
-                </Button>
+                  <input
+                    type="checkbox"
+                    checked={selectedColors.includes(c)}
+                    onChange={() => toggleInList('colors', selectedColors, c)}
+                    className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
+                  />
+                  {c}
+                </label>
+              ))}
             </div>
-        </Col>
+          </div>
+        )}
 
-        {/* Product Grid */}
-        <Col md={9}>
-            <Row>
-                {loading ? (
-                    <div className="text-center w-100 py-5">Loading products...</div>
-                ) : filteredProducts.length === 0 ? (
-                    <div className="text-center w-100 py-5">No products found matching filters.</div>
-                ) : (
-                    filteredProducts.map((product) => (
-                        <Col key={product._id} sm={12} md={6} lg={4} className="mb-4">
-                            <Card 
-                                className="h-100 border-0 shadow-sm product-card-hover"
-                                onClick={() => navigate(`/product/${product._id}`)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <div style={{ position: 'relative', overflow: 'hidden', paddingBottom: '110%', backgroundColor: '#f8f9fa' }}>
-                                    <Card.Img 
-                                        variant="top" 
-                                        src={getImageUrl(product.image)} 
-                                        onError={(e) => { e.target.src = "https://placehold.co/600x600?text=No+Image"; }}
-                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} 
-                                    />
-                                </div>
-                                <Card.Body className="d-flex flex-column">
-                                    <Card.Title as="h6" className="mb-2 text-truncate">{product.name}</Card.Title>
-                                    <Card.Text className="text-muted fw-bold mb-3">
-                                        {product.isSaleActive && product.saleSold < product.saleLimit ? (
-                                            <>
-                                                <span className="text-decoration-line-through me-2 text-secondary">EGP {product.price}</span>
-                                                <span className="text-danger">EGP {product.salePrice}</span>
-                                            </>
-                                        ) : (
-                                            `EGP ${product.price}`
-                                        )}
-                                    </Card.Text>
-                                    <Button 
-                                        variant="dark" 
-                                        className="btn-black btn-sm w-100 mt-auto rounded-0"
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            const priceToUse = product.isSaleActive && product.saleSold < product.saleLimit ? product.salePrice : product.price;
-                                            addToCartHandler({ ...product, price: priceToUse }); 
-                                        }}
-                                    >
-                                        ADD TO CART
-                                    </Button>
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                    ))
-                )}
-            </Row>
-        </Col>
-      </Row>
-    </Container>
+        {availableSizes.length > 0 && (
+          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+              Sizes
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {availableSizes.map((s) => {
+                const active = selectedSizes.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleInList('sizes', selectedSizes, s)}
+                    className={`min-w-[2.5rem] rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      active
+                        ? 'border-timber-800 bg-timber-800 text-white'
+                        : 'border-timber-200 bg-white text-timber-700 hover:border-timber-500'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+            Price range (EGP)
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="Min"
+              className="w-full rounded-xl border border-timber-200 bg-white px-3.5 py-2.5 text-sm text-timber-800 placeholder:text-timber-300 focus:border-timber-500 focus:outline-none focus:ring-2 focus:ring-wheat/30"
+              value={minInput}
+              onChange={(e) => setMinInput(e.target.value)}
+              onBlur={applyPriceToUrl}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  applyPriceToUrl();
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="Max"
+              className="w-full rounded-xl border border-timber-200 bg-white px-3.5 py-2.5 text-sm text-timber-800 placeholder:text-timber-300 focus:border-timber-500 focus:outline-none focus:ring-2 focus:ring-wheat/30"
+              value={maxInput}
+              onChange={(e) => setMaxInput(e.target.value)}
+              onBlur={applyPriceToUrl}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  applyPriceToUrl();
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          clearFilters();
+          onClose?.();
+        }}
+        className="mt-5 w-full shrink-0 rounded-xl border border-timber-200 bg-white px-4 py-2.5 text-sm font-medium text-timber-600 transition hover:border-timber-500 hover:text-timber-800"
+      >
+        Clear filters
+      </button>
+    </div>
   );
-};
 
-export default ShopPage;
+  return (
+    <div className="min-h-[calc(100vh-4rem)] bg-[#faf8f4]">
+      <div className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className="hidden lg:block">
+            <div className="sticky top-24">
+              <FiltersPanel />
+            </div>
+          </aside>
+
+          <section>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h1 className="font-display text-4xl tracking-wide text-timber-800 sm:text-5xl">
+                  All products
+                </h1>
+                <p className="mt-2 text-sm text-timber-400">
+                  {loading
+                    ? 'Loading…'
+                    : `${products.length} item${products.length === 1 ? '' : 's'} available`}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-full border border-timber-200 bg-white px-4 py-2 text-sm font-medium text-timber-700 shadow-sm lg:hidden"
+                  onClick={() => setMobileFilters(true)}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filters
+                </button>
+
+                <label className="relative inline-flex items-center">
+                  <span className="sr-only">Sort</span>
+                  <select
+                    value={sort}
+                    onChange={(e) => patchParams({ sort: e.target.value })}
+                    className="appearance-none rounded-full border border-timber-200 bg-white py-2 pl-4 pr-10 text-sm text-timber-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-wheat/30"
+                  >
+                    {SORT_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        Sort: {o.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-timber-400" />
+                </label>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse overflow-hidden rounded-[16px] border border-timber-100 bg-white"
+                  >
+                    <div className="aspect-[4/3] bg-timber-100" />
+                    <div className="space-y-2 p-3.5">
+                      <div className="h-4 w-4/5 rounded bg-timber-100" />
+                      <div className="h-3 w-2/5 rounded bg-timber-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : products.length === 0 ? (
+              <div className="rounded-2xl border border-timber-200/80 bg-white p-8 shadow-[0_12px_40px_rgba(61,46,34,0.06)]">
+                <EmptyState
+                  title="No products found"
+                  subtitle="Try clearing filters or adjusting category, color, size, or price."
+                  action={
+                    <button type="button" onClick={clearFilters} className="btn-dark btn-sm">
+                      Clear filters
+                    </button>
+                  }
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {products.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+
+      {mobileFilters && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-timber-900/40" onClick={() => setMobileFilters(false)} />
+          <div className="absolute inset-y-0 left-0 flex w-[min(100%,360px)] flex-col bg-[#f7f4ef] p-4 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="font-semibold text-timber-800">Filters</span>
+              <button type="button" className="rounded-full p-2 hover:bg-white" onClick={() => setMobileFilters(false)}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-timber-200/80 bg-white p-4 shadow-sm">
+              <FiltersPanel embedded onClose={() => setMobileFilters(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

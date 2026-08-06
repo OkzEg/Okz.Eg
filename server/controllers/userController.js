@@ -1,173 +1,92 @@
-const User = require('../models/User');
-const Product = require('../models/Product');
-const { sendEmail, getWishlistTemplate } = require('../utils/emailClient');
+const bcrypt = require('bcryptjs');
+const prisma = require('../lib/prisma');
 
-// @desc    Get user wishlist
-// @route   GET /api/users/wishlist
-// @access  Private
-const getWishlist = async (req, res) => {
+const listUsers = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate('wishlist');
-    if (user) {
-      res.json(user.wishlist);
-    } else {
-      res.status(404);
-      throw new Error('User not found');
-    }
-  } catch (error) {
-     res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Add to wishlist
-// @route   POST /api/users/wishlist
-// @access  Private
-const addToWishlist = async (req, res) => {
-  const { productId } = req.body;
-  
-  try {
-    const user = await User.findById(req.user._id);
-    
-    if (user) {
-       // Check if already in wishlist
-       if (user.wishlist.includes(productId)) {
-           return res.status(400).json({ message: 'Product already in wishlist' });
-       }
-       
-       user.wishlist.push(productId);
-       await user.save();
-
-       // Send Wishlist Email
-       try {
-         const product = await Product.findById(productId);
-         if (product) {
-           const html = getWishlistTemplate(product, user);
-           sendEmail(user.email, `Added to Wishlist: ${product.name}`, html);
-         }
-       } catch (emailError) {
-         console.error('Failed to send wishlist email:', emailError);
-       }
-
-       res.json({ message: 'Product added to wishlist' });
-    } else {
-      res.status(404);
-      throw new Error('User not found');
-    }
-  } catch (error) {
-     res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Remove from wishlist
-// @route   DELETE /api/users/wishlist/:id
-// @access  Private
-const removeFromWishlist = async (req, res) => {
-  const productId = req.params.id;
-  
-  try {
-     const user = await User.findById(req.user._id);
-     
-     if (user) {
-        user.wishlist = user.wishlist.filter(
-            (id) => id.toString() !== productId.toString()
-        );
-        await user.save();
-        res.json({ message: 'Product removed from wishlist' });
-     } else {
-        res.status(404);
-        throw new Error('User not found');
-     }
-  } catch (error) {
-     // If user cancels during a request (edge case), or other DB error
-     res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Check if product in wishlist - Helper for UI
-// @route   GET /api/users/wishlist/:id
-// @access  Private
-const checkInWishlist = async (req, res) => {
-     try {
-         const user = await User.findById(req.user._id);
-         if (!user) { return res.status(404).json('User not found'); }
-         
-         const exists = user.wishlist.includes(req.params.id);
-         res.json({ exists });
-     } catch (error) {
-         res.status(500).json({ message: error.message });
-     }
-}
-
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private
-const getUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
-
-  if (user) {
-    res.json({
-      _id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      username: user.username,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      countryCode: user.countryCode,
-      address: user.address,
-      role: user.role,
+    const role = req.query.role;
+    const users = await prisma.user.findMany({
+      where: role ? { role } : { role: { in: ['admin', 'ops'] } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
     });
-  } else {
-    res.status(404);
-    throw new Error('User not found');
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
-const updateUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
-
-  if (user) {
-    user.firstName = req.body.firstName || user.firstName;
-    user.lastName = req.body.lastName || user.lastName;
-    user.email = req.body.email || user.email;
-    user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
-    
-    // Address updates
-    if (req.body.address) {
-        user.address.street = req.body.address.street || user.address.street;
-        user.address.city = req.body.address.city || user.address.city;
-        user.address.state = req.body.address.state || user.address.state;
-        user.address.zip = req.body.address.zip || user.address.zip;
-        // Country fixed usually
+const createStaffUser = async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: 'Name, email, password, and role are required' });
+    }
+    if (!['admin', 'ops'].includes(role)) {
+      return res.status(400).json({ message: 'Role must be admin or ops' });
     }
 
-    const updatedUser = await user.save();
+    const exists = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (exists) return res.status(400).json({ message: 'User already exists' });
 
-    res.json({
-      _id: updatedUser._id,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
-      username: updatedUser.username,
-      email: updatedUser.email,
-      phoneNumber: updatedUser.phoneNumber,
-      countryCode: updatedUser.countryCode,
-      address: updatedUser.address,
-      role: updatedUser.role,
-      token: req.headers.authorization.split(' ')[1] 
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email: email.toLowerCase(),
+        passwordHash,
+        role,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
     });
-  } else {
-    res.status(404);
-    throw new Error('User not found');
+    res.status(201).json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-module.exports = { 
-    getWishlist, 
-    addToWishlist, 
-    removeFromWishlist, 
-    checkInWishlist, 
-    getUserProfile, 
-    updateUserProfile 
+const deleteUser = async (req, res) => {
+  try {
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ message: 'Cannot delete your own account' });
+    }
+    await prisma.user.delete({ where: { id: req.params.id } });
+    res.json({ message: 'User deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
+
+const listCustomers = async (req, res) => {
+  try {
+    const customers = await prisma.user.findMany({
+      where: { role: 'customer' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(customers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { listUsers, createStaffUser, deleteUser, listCustomers };

@@ -1,120 +1,92 @@
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Alert } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
+import { useWishlist } from '../context/WishlistContext';
+import { useCart } from '../context/CartContext';
+import ProductCard from '../components/store/ProductCard';
+import EmptyState from '../components/ui/EmptyState';
 import { toast } from 'react-toastify';
-import { getImageUrl } from '../utils/imagePath';
 
-const WishlistPage = () => {
-  const [wishlistItems, setWishlistItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
-  
-  const userInfo = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
+export default function WishlistPage() {
+  const { items, remove, clear } = useWishlist();
+  const { addItem } = useCart();
 
-  useEffect(() => {
-    if (!userInfo) {
-       navigate('/login?redirect=wishlist');
-       return;
-    }
-    
-    const fetchWishlist = async () => {
-       try {
-         const config = {
-            headers: { Authorization: `Bearer ${userInfo.token}` }
-         };
-         const { data } = await axios.get('/api/users/wishlist', config);
-         setWishlistItems(data);
-         setLoading(false);
-       } catch (err) {
-         setError(err.response && err.response.data.message ? err.response.data.message : err.message);
-         setLoading(false);
-       }
-    };
-    
-    fetchWishlist();
-  }, [navigate]);
-
-  const removeFromWishlistHandler = async (id) => {
-      try {
-         const config = {
-            headers: { Authorization: `Bearer ${userInfo.token}` }
-         };
-         await axios.delete(`/api/users/wishlist/${id}`, config);
-         // Refresh list locally
-         setWishlistItems(wishlistItems.filter(item => item._id !== id));
-         toast.success('Removed from Wishlist');
-      } catch (err) {
-         toast.error(err.message);
-      }
-  };
-
-  const addToCartHandler = (product) => {
-       // Similar to logic in other pages
-       let cartItems = localStorage.getItem('cartItems') ? JSON.parse(localStorage.getItem('cartItems')) : [];
-       const existItem = cartItems.find((x) => x.product === product._id);
-       
-       if (existItem) {
-         cartItems = cartItems.map((x) => x.product === existItem.product ? { ...existItem, qty: existItem.qty + 1 } : x);
-       } else {
-         cartItems.push({ ...product, product: product._id, qty: 1 });
-       }
-       
-       localStorage.setItem('cartItems', JSON.stringify(cartItems));
-       window.dispatchEvent(new Event('cartUpdated'));
-       toast.success('Moved to Cart');
-       // navigate('/cart'); // Stay here to move more items?
-  };
+  if (!items.length) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16">
+        <EmptyState
+          title="Your wishlist is empty"
+          subtitle="Tap the heart on any product to save it here."
+          action={<Link to="/shop" className="btn-wheat">Browse shop</Link>}
+        />
+      </div>
+    );
+  }
 
   return (
-    <Container className="mt-5">
-      <h2 className="mb-4">My Wishlist</h2>
-      {loading ? (
-          <div>Loading...</div>
-      ) : error ? (
-          <Alert variant='danger'>{error}</Alert>
-      ) : wishlistItems.length === 0 ? (
-          <Alert variant='info'>Your wishlist is empty. <Link to="/">Go shopping</Link></Alert>
-      ) : (
-          <Row>
-              {wishlistItems.map((product) => (
-                  <Col key={product._id} sm={12} md={6} lg={4} xl={3} className="mb-3">
-                      <Card className="h-100 shadow-sm border-0 position-relative">
-                          {/* Remove Button */}
-                          <Button 
-                             variant="light" 
-                             className="position-absolute top-0 end-0 m-2 rounded-circle shadow-sm"
-                             style={{ zIndex: 10, width: '35px', height: '35px', padding: 0 }}
-                             onClick={() => removeFromWishlistHandler(product._id)}
-                          >
-                             <i className="fas fa-times text-danger"></i>
-                          </Button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-5xl text-timber-800 tracking-wide">Wishlist</h1>
+          <p className="mt-1 text-sm text-timber-500">
+            {items.length} saved {items.length === 1 ? 'item' : 'items'}
+          </p>
+        </div>
+        <button type="button" className="btn-outline btn-sm" onClick={clear}>
+          Clear all
+        </button>
+      </div>
 
-                          <Link to={`/product/${product._id}`} className="text-decoration-none text-dark">
-                              <Card.Img variant="top" src={getImageUrl(product.image)} style={{ height: '200px', objectFit: 'cover' }} />
-                              <Card.Body className="d-flex flex-column">
-                                  <Card.Title as="div" className="mb-2"><strong>{product.name}</strong></Card.Title>
-                                  <Card.Text as="h5" className="mb-3">EGP {product.price}</Card.Text>
-                              </Card.Body>
-                          </Link>
-                          <Card.Footer className="bg-white border-0">
-                               <Button 
-                                  className="w-100 rounded-pill" 
-                                  variant="dark"
-                                  onClick={() => addToCartHandler(product)}
-                                  disabled={product.countInStock === 0}
-                               >
-                                  {product.countInStock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                               </Button>
-                          </Card.Footer>
-                      </Card>
-                  </Col>
-              ))}
-          </Row>
-      )}
-    </Container>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {items.map((item) => (
+          <div key={item.id} className="relative">
+            <ProductCard
+              product={{
+                id: item.id,
+                name: item.name,
+                photos: item.photos?.length ? item.photos : [item.image],
+                price: item.originalPrice ?? item.price,
+                salePrice: item.salePrice,
+                isSaleActive: item.isSaleActive,
+                type: item.type,
+                colors: item.colors,
+                stock: item.stock,
+              }}
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                className="btn-wheat btn-sm flex-1"
+                disabled={item.stock < 1}
+                onClick={() => {
+                  addItem(
+                    {
+                      id: item.id,
+                      name: item.name,
+                      photos: item.photos?.length ? item.photos : [item.image],
+                      price: item.originalPrice ?? item.price,
+                      salePrice: item.salePrice,
+                      isSaleActive: item.isSaleActive,
+                      stock: item.stock,
+                    },
+                    1
+                  );
+                  toast.success('Added to cart');
+                }}
+              >
+                {item.stock < 1 ? 'Out of stock' : 'Add to cart'}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost btn-sm text-red-600"
+                aria-label="Remove from wishlist"
+                onClick={() => remove(item.id)}
+              >
+                <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
-};
-
-export default WishlistPage;
+}

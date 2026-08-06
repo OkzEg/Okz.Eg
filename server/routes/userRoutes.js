@@ -1,17 +1,17 @@
 const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
-const { 
-    getWishlist, 
-    addToWishlist, 
-    removeFromWishlist, 
-    checkInWishlist, 
-    getUserProfile, 
-    updateUserProfile 
+const {
+  listUsers,
+  createStaffUser,
+  deleteUser,
+  listCustomers,
 } = require('../controllers/userController');
+const { protect, adminOnly, opsOrAdmin } = require('../middleware/authMiddleware');
 
-router.route('/profile').get(protect, getUserProfile).put(protect, updateUserProfile);
-router.route('/wishlist').get(protect, getWishlist).post(protect, addToWishlist);
-router.route('/wishlist/:id').delete(protect, removeFromWishlist).get(protect, checkInWishlist);
+const router = express.Router();
+
+router.get('/', protect, adminOnly, listUsers);
+router.post('/', protect, adminOnly, createStaffUser);
+router.delete('/:id', protect, adminOnly, deleteUser);
+router.get('/customers', protect, opsOrAdmin, listCustomers);
 
 module.exports = router;

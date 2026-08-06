@@ -1,0 +1,120 @@
+import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
+import { Trash2 } from 'lucide-react';
+import api from '../../api/axios';
+import { formatMoney, orderStatusBadge, orderStatusLabel } from '../../utils/helpers';
+
+const NEXT = {
+  pending: ['confirmed', 'canceled'],
+  confirmed: ['out_for_delivery', 'canceled', 'problem'],
+  out_for_delivery: ['delivered', 'problem', 'canceled'],
+  problem: ['confirmed', 'out_for_delivery', 'canceled'],
+  delivered: [],
+  canceled: [],
+};
+
+export default function StaffDeliveries() {
+  const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+
+  const load = () =>
+    api.get('/orders' + (filter ? `?status=${filter}` : '')).then((r) => setOrders(r.data));
+
+  useEffect(() => { load(); }, [filter]);
+
+  const setStatus = async (id, status) => {
+    try {
+      await api.patch(`/orders/${id}/status`, { status });
+      toast.success(`Marked ${orderStatusLabel[status]}`);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed');
+    }
+  };
+
+  const remove = async (order) => {
+    const label = order.id.slice(0, 8);
+    if (!window.confirm(`Delete order ${label}? This cannot be undone.`)) return;
+    setDeletingId(order.id);
+    try {
+      await api.delete(`/orders/${order.id}`);
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      toast.success('Order deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delete failed');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <>
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="page-title">Deliveries</h1>
+          <p className="page-subtitle">Track and advance order fulfillment</p>
+        </div>
+        <select className="input w-48" value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <option value="">All statuses</option>
+          {Object.keys(orderStatusLabel).map((s) => (
+            <option key={s} value={s}>{orderStatusLabel[s]}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="table-wrapper">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Address</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o) => (
+              <tr key={o.id}>
+                <td className="font-mono text-xs">{o.id.slice(0, 8)}</td>
+                <td>{o.user?.name}</td>
+                <td>{o.user?.phone || '—'}</td>
+                <td className="max-w-[180px] truncate">
+                  {o.shippingAddress?.city}, {o.shippingAddress?.street}
+                </td>
+                <td>{formatMoney(o.totalPrice)}</td>
+                <td><span className={orderStatusBadge[o.status]}>{orderStatusLabel[o.status]}</span></td>
+                <td>
+                  <div className="flex flex-wrap gap-1 items-center">
+                    {(NEXT[o.status] || []).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        className="btn-outline btn-sm"
+                        onClick={() => setStatus(o.id, s)}
+                      >
+                        {orderStatusLabel[s]}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm text-red-600 hover:bg-red-50"
+                      title="Delete order"
+                      disabled={deletingId === o.id}
+                      onClick={() => remove(o)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}

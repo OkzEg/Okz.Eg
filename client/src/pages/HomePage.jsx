@@ -1,318 +1,123 @@
 import { useEffect, useState } from 'react';
-import { Row, Col, Card, Button, Toast, ToastContainer, Carousel, Image, Container } from 'react-bootstrap';
-import axios from 'axios';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import ConfirmationToast from '../components/ConfirmationToast';
-import { getImageUrl } from '../utils/imagePath';
+import { Link } from 'react-router-dom';
+import api from '../api/axios';
+import ProductCard from '../components/store/ProductCard';
+import { getImageUrl } from '../utils/helpers';
 
-const HomePage = () => {
-  const [products, setProducts] = useState([]);
+export default function HomePage() {
   const [slides, setSlides] = useState([]);
-  const [showToast, setShowToast] = useState(false);
-  const userInfo =  localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const fetchSlides = async () => {
-       try {
-           const { data } = await axios.get('/api/slides');
-           setSlides(data);
-       } catch (err) {
-           console.error(err);
-       }
-  };
-
-  const fetchProducts = async () => {
-    const keyword = new URLSearchParams(location.search).get('keyword') || '';
-    const { data } = await axios.get(`/api/products?keyword=${keyword}`);
-    setProducts(data);
-  };
+  const [products, setProducts] = useState([]);
+  const [index, setIndex] = useState(0);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
-    fetchProducts();
-    fetchSlides();
-  }, [location.search]);
+    api.get('/slides').then((r) => setSlides(r.data)).catch(() => {});
+    api
+      .get('/products?limit=8')
+      .then((r) => setProducts(r.data))
+      .catch(() => setProducts([]))
+      .finally(() => setLoadingProducts(false));
+  }, []);
 
-  const deleteHandler = (id) => {
-    toast(<ConfirmationToast 
-        message="Are you sure you want to delete this product?"
-        onConfirm={async () => {
-            try {
-                const config = {
-                   headers: {
-                    Authorization: `Bearer ${userInfo.token}`,
-                   }
-                }
-                await axios.delete(`/api/products/${id}`, config);
-                fetchProducts();
-                toast.success('Product deleted successfully');
-            } catch (error) {
-                toast.error(error.message);
-            }
-        }}
-    />, { 
-        position: "top-center",
-        autoClose: false,
-        closeOnClick: false,
-        draggable: false,
-        closeButton: false
-    });
-  };
-  
-  const addToCartHandler = (product) => {
-       // Simple cart logic using localStorage
-       let cartItems = localStorage.getItem('cartItems') ? JSON.parse(localStorage.getItem('cartItems')) : [];
-       const existItem = cartItems.find((x) => x.product === product._id);
-       
-       if (existItem) {
-         cartItems = cartItems.map((x) => x.product === existItem.product ? { ...existItem, qty: existItem.qty + 1 } : x);
-       } else {
-         cartItems.push({ ...product, product: product._id, qty: 1 });
-       }
-       
-       localStorage.setItem('cartItems', JSON.stringify(cartItems));
-       window.dispatchEvent(new Event('cartUpdated'));
-       setShowToast(true);
-  };
+  useEffect(() => {
+    if (slides.length < 2) return undefined;
+    const t = setInterval(() => setIndex((i) => (i + 1) % slides.length), 5500);
+    return () => clearInterval(t);
+  }, [slides.length]);
 
-  // Admin Dashboard View
-  if (userInfo && userInfo.role === 'admin') {
-      return (
-        <div className="admin-dashboard text-center mt-5">
-            <h1 className="mb-5">ADMIN DASHBOARD</h1>
-            <Row className="justify-content-center">
-                <Col md={4} className="mb-4">
-                    <Link to="/admin/product/create" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Card className="h-100 shadow-sm border-0">
-                            <Card.Body className="d-flex flex-column align-items-center justify-content-center py-5">
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>+</div>
-                                <Card.Title>CREATE ITEM</Card.Title>
-                                <Card.Text>Add a new product to the store</Card.Text>
-                            </Card.Body>
-                        </Card>
-                    </Link>
-                </Col>
-                <Col md={4} className="mb-4">
-                    <Link to="/admin/promotions" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Card className="h-100 shadow-sm border-0">
-                            <Card.Body className="d-flex flex-column align-items-center justify-content-center py-5">
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>%</div>
-                                <Card.Title>PROMOTIONS</Card.Title>
-                                <Card.Text>Manage promo codes & discounts</Card.Text>
-                            </Card.Body>
-                        </Card>
-                    </Link>
-                </Col>
-                <Col md={4} className="mb-4">
-                    <Link to="/admin/revenue" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Card className="h-100 shadow-sm border-0">
-                            <Card.Body className="d-flex flex-column align-items-center justify-content-center py-5">
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>EGP</div>
-                                <Card.Title>TOTAL REVENUE</Card.Title>
-                                <Card.Text>View sales analytics</Card.Text>
-                            </Card.Body>
-                        </Card>
-                    </Link>
-                </Col>
-            </Row>
-
-            <h3 className="mt-5 text-start" style={{ fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>CURRENT INVENTORY</h3>
-             <Row className="mt-4 text-start">
-                    {products.map((product) => (
-                    <Col key={product._id} sm={12} md={6} lg={4} xl={3} className="mb-4">
-                        <Card 
-                            className="h-100 border-0 shadow product-card-hover" 
-                            style={{ overflow: 'hidden', cursor: 'pointer' }}
-                            onClick={() => navigate(`/product/${product._id}`)}
-                        >
-                            <div style={{ position: 'relative', overflow: 'hidden', paddingBottom: '100%', backgroundColor: '#f8f9fa' }}>
-                                <Card.Img 
-                                    variant="top" 
-                                    src={getImageUrl(product.image)} 
-                                    onError={(e) => {
-                                      e.target.onerror = null; 
-                                      e.target.src = "https://placehold.co/600x600?text=No+Image";
-                                    }}
-                                    style={{ 
-                                        position: 'absolute', 
-                                        top: 0, 
-                                        left: 0, 
-                                        width: '100%', 
-                                        height: '100%', 
-                                        objectFit: 'cover'
-                                    }} 
-                                />
-                                <div 
-                                    className="position-absolute top-0 end-0 p-2"
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteHandler(product._id); }}
-                                    style={{ cursor: 'pointer' }}
-                                >
-                                    <div className="bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style={{ width: '35px', height: '35px' }}>
-                                        <i className="fas fa-trash text-danger"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <Card.Body className="d-flex flex-column">
-                                <Card.Title as="h5" className="mb-1 text-uppercase" style={{ fontFamily: 'var(--font-heading)' }}>
-                                    {product.name}
-                                </Card.Title>
-                                <Card.Text className="text-muted fw-bold mb-3">
-                                    EGP {product.price}
-                                </Card.Text>
-                                
-                                <div className="mt-auto">
-                                     <Button 
-                                        variant="dark" 
-                                        className="btn-black btn-sm w-100 rounded-0"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            addToCartHandler(product);
-                                        }}
-                                     >
-                                        <i className="fas fa-shopping-bag me-2"></i>ADD TO CART
-                                     </Button>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                    ))}
-            </Row>
-        </div>
-      );
-  }
+  const slide = slides[index];
 
   return (
-    <>
-      {slides.length > 0 ? (
-          <div className="position-relative mb-5">
-              <Carousel className="custom-carousel" prevIcon={<span className="carousel-control-prev-icon" aria-hidden="true" />} nextIcon={<span className="carousel-control-next-icon" aria-hidden="true" />}>
-                  {slides.map(slide => (
-                      <Carousel.Item key={slide._id}>
-                          <div className="d-flex align-items-center justify-content-center bg-light" style={{ height: '500px', width: '100%', overflow: 'hidden' }}>
-                                <Image
-                                  className="d-block w-100 h-100"
-                                  src={getImageUrl(slide.image)}
-                                  alt={slide.title}
-                                  style={{ objectFit: 'cover' }}
-                                />
-                          </div>
-                      </Carousel.Item>
-                  ))}
-              </Carousel>
-              
-              {/* Overlay Content */}
-              <div className="position-absolute top-50 start-50 translate-middle text-center text-white p-4 rounded" style={{ zIndex: 10, backgroundColor: 'rgba(0,0,0,0.3)' }}>
-                    <h1 className="display-3 fw-bold mb-3" style={{ letterSpacing: '3px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>NEW ARRIVALS</h1>
-                    <p className="lead mb-4" style={{ letterSpacing: '1px', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>SUMMER COLLECTION 2026</p>
-                    <Link to="/shop">
-                        <Button variant="light" size="lg" className='px-5 py-3 rounded-0 fw-bold' style={{ letterSpacing: '2px' }}>SHOP NOW</Button>
-                    </Link>
-              </div>
-          </div>
-      ) : (
-          <div className="hero-banner mb-5 d-flex align-items-center justify-content-center text-center text-black" style={{ height: '400px', backgroundColor: '#f5f5f5' }}>
-            <Container>
-                <h1 className="display-3 fw-bold mb-3" style={{ letterSpacing: '3px' }}>NEW ARRIVALS</h1>
-                <p className="lead text-muted mb-4" style={{ letterSpacing: '1px' }}>SUMMER COLLECTION 2026</p>
-                <Link to="/shop">
-                     <Button variant="dark" size="lg" className='px-5 py-3 rounded-0' style={{ letterSpacing: '2px' }}>SHOP NOW</Button>
-                </Link>
-            </Container>
-          </div>
-      )}
-
-      <Row className='align-items-center mb-4 mt-5'>
-        <Col>
-          <h2 style={{ fontFamily: 'var(--font-heading)', letterSpacing: '2px' }}>LATEST DROPS</h2>
-        </Col>
-        {userInfo && userInfo.role === 'admin' && (
-          <Col className='text-end'>
-            <Button className='btn-black' onClick={createProductHandler}>
-              + CREATE PRODUCT
-            </Button>
-          </Col>
+    <div>
+      <section className="relative min-h-[100svh] w-full overflow-hidden bg-timber-800">
+        {slide && (
+          <img
+            key={slide.id}
+            src={getImageUrl(slide.cloudinaryUrl)}
+            alt={slide.title}
+            className="absolute inset-0 w-full h-full object-cover opacity-70 animate-[fadeIn_0.8s_ease]"
+          />
         )}
-      </Row>
-      <Row>
-        {products.map((product) => (
-          <Col key={product._id} sm={12} md={6} lg={4} xl={3} className="mb-4">
-            <Card 
-                className="h-100 border-0 shadow product-card-hover" 
-                style={{ overflow: 'hidden', cursor: 'pointer' }}
-                onClick={() => navigate(`/product/${product._id}`)}
-            >
-                <div style={{ position: 'relative', overflow: 'hidden', paddingBottom: '100%', backgroundColor: '#f8f9fa' }}>
-                    <Card.Img 
-                        variant="top" 
-                        src={getImageUrl(product.image)} 
-                        onError={(e) => {
-                            e.target.onerror = null; 
-                            e.target.src = "https://placehold.co/600x600?text=No+Image";
-                        }}
-                        style={{ 
-                            position: 'absolute', 
-                            top: 0, 
-                            left: 0, 
-                            width: '100%', 
-                            height: '100%', 
-                            objectFit: 'cover'
-                        }} 
-                    />
-                </div>
-                <Card.Body className="d-flex flex-column">
-                    <Card.Title as="h5" className="mb-1 text-uppercase" style={{ fontFamily: 'var(--font-heading)' }}>
-                        {product.name}
-                    </Card.Title>
-                    <Card.Text className="text-muted fw-bold mb-3">
-                        {product.isSaleActive && product.saleSold < product.saleLimit ? (
-                            <>
-                                <span className="text-decoration-line-through me-2 text-secondary">EGP {product.price}</span>
-                                <span className="text-danger">EGP {product.salePrice}</span>
-                            </>
-                        ) : (
-                            `EGP ${product.price}`
-                        )}
-                    </Card.Text>
-                    
-                    <div className="mt-auto">
-                            <Button 
-                            variant="dark" 
-                            className="btn-black btn-sm w-100 rounded-0"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const priceToUse = product.isSaleActive && product.saleSold < product.saleLimit ? product.salePrice : product.price;
-                                addToCartHandler({ ...product, price: priceToUse });
-                            }}
-                            >
-                            <i className="fas fa-shopping-bag me-2"></i>ADD TO CART
-                            </Button>
-                    </div>
-                </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+        <div className="absolute inset-0 bg-gradient-to-r from-timber-800/95 via-timber-700/60 to-transparent" />
+        <div className="relative max-w-7xl mx-auto px-5 sm:px-8 min-h-[100svh] flex items-center">
+          <div className="max-w-xl text-white pt-28 pb-20">
+            <h1 className="font-display text-6xl sm:text-7xl leading-[0.95] tracking-wide">
+              {slide?.title || 'Built for the long haul.'}
+            </h1>
+            <p className="mt-5 text-timber-200 text-lg max-w-md text-balance">
+              {slide?.description ||
+                'Premium boots, belts, and gear from OKZ — ready for work and weekend.'}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link to="/shop" className="btn-wheat btn-lg">Shop collection</Link>
+              <Link to="/shop?type=shoe" className="btn-outline btn-lg border-white/30 text-white hover:bg-white/10">
+                Explore boots
+              </Link>
+            </div>
+          </div>
+        </div>
+        {slides.length > 1 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+            {slides.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                aria-label={`Slide ${i + 1}`}
+                onClick={() => setIndex(i)}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === index ? 'w-8 bg-wheat' : 'w-2 bg-white/40'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
-      <ToastContainer className="p-3" position="top-end" style={{ zIndex: 9999, position: 'fixed' }}>
-        <Toast onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide bg="dark">
-          <Toast.Header closeButton={false} className="d-flex justify-content-between">
-            <img
-              src="/images/z-logo.png"
-              className="rounded me-2"
-              alt=""
-              style={{ height: '20px' }}
-            />
-            <strong className="me-auto text-dark">TimberZee</strong>
-            <button type="button" className="btn-close" onClick={() => setShowToast(false)}></button>
-          </Toast.Header>
-          <Toast.Body className="text-white">
-            Added to cart successfully!
-          </Toast.Body>
-        </Toast>
-      </ToastContainer>
-    </>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <h2 className="font-display text-4xl text-timber-900 tracking-wide">Featured</h2>
+            <p className="text-timber-500 mt-1">Handpicked pieces from the floor</p>
+          </div>
+          <Link to="/shop" className="btn-outline btn-sm">View all</Link>
+        </div>
+        {loadingProducts ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse">
+                <div className="aspect-[4/5] rounded-xl bg-timber-100" />
+                <div className="mt-3 h-4 w-3/4 rounded bg-timber-100" />
+                <div className="mt-2 h-3 w-1/2 rounded bg-timber-50" />
+              </div>
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <p className="text-timber-500 text-sm">No products yet — check back soon.</p>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="bg-timber-700 text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 grid md:grid-cols-3 gap-8 text-center">
+          {[
+            ['Premium leather', 'Materials selected for lasting wear'],
+            ['Trail to town', 'Styles that move with your day'],
+            ['Cash on delivery', 'Pay when your order arrives'],
+          ].map(([t, d]) => (
+            <div key={t}>
+              <h3 className="font-display text-2xl tracking-wide text-wheat">{t}</h3>
+              <p className="mt-2 text-timber-300 text-sm">{d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <style>{`@keyframes fadeIn { from { opacity: 0.4; } to { opacity: 0.7; } }`}</style>
+    </div>
   );
-};
-
-export default HomePage;
+}

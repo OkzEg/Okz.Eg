@@ -1,344 +1,294 @@
-const Order = require('../models/Order');
-const Product = require('../models/Product');
-const { sendWhatsAppMessage } = require('../utils/whatsappClient');
-const { sendEmail, getAdminOrderTemplate } = require('../utils/emailClient');
+const prisma = require('../lib/prisma');
+const cache = require('../lib/cache');
 
-// @desc    Create new order
-// @route   POST /api/orders
-// @access  Private
-const addOrderItems = async (req, res) => {
-  const {
-    orderItems,
-    shippingAddress,
-    paymentMethod,
-    itemsPrice,
-    taxPrice,
-    shippingPrice,
-    totalPrice,
-    coupon,
-  } = req.body;
+const effectivePrice = (product) => {
+  if (product.isSaleActive && product.salePrice != null) {
+    return Number(product.salePrice);
+  }
+  return Number(product.price);
+};
 
-  if (orderItems && orderItems.length === 0) {
-    res.status(400);
-    throw new Error('No order items');
-  } else {
-    // Calculate Shipping
-    let calculatedShippingPrice = 120; // Default
-    const gov = shippingAddress.state || ''; // Using state field for governorate
-    
-    const zone90 = ['Alexandria', 'Beheira', 'Kafr El Sheikh', 'Kafr El-Sheikh', 'Gharbia', 'Monufia', 'Suez', 'Qalyubia', 'Dakahlia', 'Sharqia', 'Damietta', 'Port Said', 'Ismailia', 'Matruh'];
-    const zone70 = ['Cairo', 'Giza'];
-
-    // Normalize for comparison
-    const govNormal = gov.trim();
-
-    if (zone70.some(z => govNormal.toLowerCase() === z.toLowerCase())) {
-        calculatedShippingPrice = 70;
-    } else if (zone90.some(z => govNormal.toLowerCase() === z.toLowerCase())) {
-        calculatedShippingPrice = 90;
+const createOrder = async (req, res) => {
+  try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Only customers can place orders' });
     }
 
-    // Force tax to 0
-    const finalTaxPrice = 0;
+    const { orderItems, paymentMethod, shippingAddress, couponCode } = req.body;
+    if (!orderItems?.length) {
+      return res.status(400).json({ message: 'No order items' });
+    }
+    if (!paymentMethod || !shippingAddress) {
+      return res.status(400).json({ message: 'Payment method and shipping address required' });
+    }
 
-    // Recalculate total price
-    let adjustedTotalPrice = Number(itemsPrice) + finalTaxPrice + calculatedShippingPrice;
+    const productIds = orderItems.map((i) => i.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+    const byId = Object.fromEntries(products.map((p) => [p.id, p]));
 
-    adjustedTotalPrice = adjustedTotalPrice.toFixed(2);
+    let itemsPrice = 0;
+    const itemsData = [];
 
-    const order = new Order({
-      orderItems,
-      user: req.user._id,
-      shippingAddress,
-      paymentMethod,
-      itemsPrice,
-      taxPrice: finalTaxPrice,
-      shippingPrice: calculatedShippingPrice,
-      totalPrice: adjustedTotalPrice,
+    for (const item of orderItems) {
+      const product = byId[item.productId];
+      if (!product) {
+        return res.status(400).json({ message: `Product not found: ${item.productId}` });
+      }
+      const qty = Number(item.qty) || 0;
+      if (qty < 1) {
+        return res.status(400).json({ message: `Invalid quantity for ${product.name}` });
+      }
+      if (product.stock < qty) {
+        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+      }
+      const price = effectivePrice(product);
+      itemsPrice += price * qty;
+      itemsData.push({
+        productId: product.id,
+        name: product.name,
+        qty,
+        image: product.photos[0] || '',
+        price,
+        color: item.color || null,
+        size: item.size || null,
+      });
+    }
+
+    let discountAmount = 0;
+    let couponId = null;
+    let savedCouponCode = null;
+    if (couponCode) {
+      const coupon = await prisma.coupon.findUnique({
+        where: { code: couponCode.toUpperCase() },
+      });
+      if (!coupon || !coupon.isActive) {
+        return res.status(400).json({ message: 'Invalid coupon' });
+      }
+      discountAmount = (itemsPrice * coupon.discountPercentage) / 100;
+      couponId = coupon.id;
+      savedCouponCode = coupon.code;
+    }
+
+    const shippingPrice = itemsPrice >= 2000 ? 0 : 75;
+    const totalPrice = Math.max(0, itemsPrice + shippingPrice - discountAmount);
+
+    const order = await prisma.$transaction(async (tx) => {
+      for (const item of itemsData) {
+        // Atomic deduct — fails if stock was taken by another order
+        const updated = await tx.product.updateMany({
+          where: { id: item.productId, stock: { gte: item.qty } },
+          data: { stock: { decrement: item.qty } },
+        });
+        if (updated.count === 0) {
+          throw new Error(`Insufficient stock for ${item.name}`);
+        }
+      }
+
+      return tx.order.create({
+        data: {
+          userId: req.user.id,
+          paymentMethod,
+          shippingAddress,
+          itemsPrice,
+          shippingPrice,
+          discountAmount,
+          totalPrice,
+          couponId,
+          couponCode: savedCouponCode,
+          items: { create: itemsData },
+        },
+        include: {
+          items: true,
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
     });
 
-    const createdOrder = await order.save();
+    cache.invalidate('products');
+    cache.invalidate('product');
 
-    // Increment saleSold for products on sale
-    for (const item of orderItems) {
-      const product = await Product.findById(item.product);
-      if (product && product.isSaleActive) {
-        product.saleSold = (product.saleSold || 0) + item.qty;
-        await product.save();
-      }
+    res.status(201).json(serializeOrder(order));
+  } catch (error) {
+    if (error.message?.startsWith('Insufficient stock')) {
+      return res.status(400).json({ message: error.message });
     }
-
-    // Send Email to Admin
-    try {
-        const adminEmail = 'timberzee3@gmail.com'; 
-        const html = getAdminOrderTemplate(createdOrder, req.user);
-        sendEmail(adminEmail, `New Order Received #${createdOrder._id}`, html);
-    } catch (emailError) {
-        console.error('Failed to send admin email:', emailError);
-    }
-
-    res.status(201).json(createdOrder);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get order by ID
-// @route   GET /api/orders/:id
-// @access  Private
-const getOrderById = async (req, res) => {
-  const order = await Order.findById(req.params.id).populate(
-    'user',
-    'firstName lastName email phoneNumber'
-  );
+const serializeOrder = (order) => ({
+  ...order,
+  itemsPrice: Number(order.itemsPrice),
+  shippingPrice: Number(order.shippingPrice),
+  discountAmount: Number(order.discountAmount),
+  totalPrice: Number(order.totalPrice),
+  items: order.items?.map((i) => ({ ...i, price: Number(i.price) })),
+});
 
-  if (order) {
-    res.json(order);
-  } else {
-    res.status(404);
-    res.status(404).json({ message: 'Order not found' });
+const myOrders = async (req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      where: { userId: req.user.id },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(orders.map(serializeOrder));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Update order to paid
-// @route   PUT /api/orders/:id/pay
-// @access  Private
-const updateOrderToPaid = async (req, res) => {
-  const order = await Order.findById(req.params.id);
+const getOrder = async (req, res) => {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      include: {
+        items: true,
+        user: { select: { id: true, name: true, email: true, phone: true } },
+        problems: true,
+      },
+    });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
 
-  if (order) {
-    order.isPaid = true;
-    order.paidAt = Date.now();
-    order.paymentResult = {
-      id: req.body.id,
-      status: req.body.status,
-      update_time: req.body.update_time,
-      email_address: req.body.email_address,
+    const isOwner = order.userId === req.user.id;
+    const isStaff = ['admin', 'ops'].includes(req.user.role);
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    res.json(serializeOrder(order));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const listOrders = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const orders = await prisma.order.findMany({
+      where: status ? { status } : undefined,
+      include: {
+        items: true,
+        user: { select: { id: true, name: true, email: true, phone: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(orders.map(serializeOrder));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowed = [
+      'pending',
+      'confirmed',
+      'out_for_delivery',
+      'delivered',
+      'canceled',
+      'problem',
+    ];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const data = { status };
+    if (status === 'delivered') {
+      data.deliveredAt = new Date();
+      data.isPaid = true;
+      data.paidAt = new Date();
+    }
+
+    const order = await prisma.order.update({
+      where: { id: req.params.id },
+      data,
+      include: {
+        items: true,
+        user: { select: { id: true, name: true, email: true, phone: true } },
+      },
+    });
+    res.json(serializeOrder(order));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const deleteOrder = async (req, res) => {
+  try {
+    const existing = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+    if (!existing) return res.status(404).json({ message: 'Order not found' });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.problemRequest.deleteMany({ where: { orderId: req.params.id } });
+      await tx.orderItem.deleteMany({ where: { orderId: req.params.id } });
+      await tx.order.delete({ where: { id: req.params.id } });
+    });
+
+    res.json({ message: 'Order deleted', id: req.params.id });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const financeSummary = async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const createdAt = {};
+    if (from) createdAt.gte = new Date(from);
+    if (to) createdAt.lte = new Date(to);
+
+    const where = {
+      status: { not: 'canceled' },
+      ...(Object.keys(createdAt).length ? { createdAt } : {}),
     };
 
-    const updatedOrder = await order.save();
-
-    res.json(updatedOrder);
-  } else {
-    res.status(404);
-    res.status(404).json({ message: 'Order not found' });
-  }
-};
-
-// @desc    Get logged in user orders
-// @route   GET /api/orders/myorders
-// @access  Private
-const getMyOrders = async (req, res) => {
-  const orders = await Order.find({ user: req.user._id });
-  res.json(orders);
-};
-
-// @desc    Get all orders
-// @route   GET /api/orders
-// @access  Private/Admin
-const getOrders = async (req, res) => {
-  const orders = await Order.find({})
-    .populate('user', 'id firstName lastName')
-    .sort({ createdAt: 1 }); // Oldest first (FIFO Priority)
-  res.json(orders);
-};
-
-// @desc    Update order status
-// @route   PUT /api/orders/:id/status
-// @access  Private/Admin
-const updateOrderStatus = async (req, res) => {
-  const { status, shippingFee } = req.body;
-  const order = await Order.findById(req.params.id).populate('user', 'firstName lastName countryCode phoneNumber');
-
-  if (order) {
-     if (order.orderStatus === 'delivered' && status === 'canceled') {
-         res.status(400);
-         throw new Error('A delivered order cannot be canceled');
-     }
-
-     if (status === 'confirmed') {
-         if (order.user && order.user.phoneNumber) {
-             const countryCode = order.user.countryCode || '+20';
-             const phoneNumber = order.user.phoneNumber;
-             const fullNumber = `${countryCode}${phoneNumber}`;
-             
-             const message = `Hello ${order.user.firstName},
-Your order #${order._id} has been confirmed!
-
-*Receipt:*
-${order.orderItems.map(item => `- ${item.name} x${item.qty}: ${item.price.toFixed(2)} EGP`).join('\n')}
-
-*Breakdown:*
-Items Total: ${order.itemsPrice.toFixed(2)} EGP
-Tax: ${order.taxPrice.toFixed(2)} EGP
-Shipping: ${order.shippingPrice.toFixed(2)} EGP
-----------------
-*Total: ${order.totalPrice} EGP*
-
-Estimated Arrival: 3-5 business days.
-
-Thank you for shopping with us!`;
- 
-             sendWhatsAppMessage(fullNumber, message);
-         }
-     }
-
-     if (status === 'canceled') {
-         if (order.user && order.user.phoneNumber) {
-             const countryCode = order.user.countryCode || '+20';
-             const phoneNumber = order.user.phoneNumber;
-             const fullNumber = `${countryCode}${phoneNumber}`;
-             
-             const message = `Hello ${order.user.firstName},
-Per your request, your order #${order._id} has been canceled.
-
-If you have any questions or did not request this cancellation, please contact us immediately.
-
-Thank you.`;
-             sendWhatsAppMessage(fullNumber, message);
-         }
-     }
-
-     order.orderStatus = status;
-
-     if (status === 'delivered') {
-         order.isDelivered = true;
-         order.deliveredAt = Date.now();
-     } else {
-         order.isDelivered = false;
-         order.deliveredAt = null;
-     }
-     
-     if (status === 'confirmed' || status === 'delivered') {
-          // You might check if already confirmed etc.
-          // For now just update status
-     }
-
-     const updatedOrder = await order.save();
-     res.json(updatedOrder);
-  } else {
-    res.status(404);
-    throw new Error('Order not found');
-  }
-};
-
-// @desc    Request order cancellation
-// @route   POST /api/orders/:id/cancel
-// @access  Private
-const requestOrderCancellation = async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'firstName lastName email');
-
-  if (order) {
-    // Check ownership
-    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-       res.status(401);
-       throw new Error('Not authorized to cancel this order');
-    }
-
-    if (order.isDelivered) {
-        res.status(400);
-        throw new Error('Cannot cancel a delivered order');
-    }
-
-    // Send Email to Admin
-    try {
-        const adminEmail = 'timberzee3@gmail.com'; 
-        const subject = `Cancellation Request for Order #${order._id}`;
-        const html = `
-          <div style="font-family: sans-serif; padding: 20px;">
-            <h2 style="color: #e74c3c;">Order Cancellation Request</h2>
-            <p>Customer <strong>${order.user.firstName} ${order.user.lastName}</strong> (<a href="mailto:${order.user.email}">${order.user.email}</a>) has requested to cancel their order.</p>
-            <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <p><strong>Order ID:</strong> #${order._id}</p>
-                <p><strong>Total Amount:</strong> ${order.totalPrice} EGP</p>
-                <p><strong>Current Status:</strong> ${order.orderStatus || 'Pending'}</p>
-            </div>
-            <p>Please review this request in the admin panel.</p>
-          </div>
-        `;
-        
-        sendEmail(adminEmail, subject, html);
-        
-        res.json({ message: 'Cancellation request sent to admin' });
-    } catch (error) {
-        console.error(error);
-        res.status(500);
-        throw new Error('Failed to send cancellation email');
-    }
-  } else {
-    res.status(404);
-    throw new Error('Order not found');
-  }
-};
-
-// @desc    Get dashboard analytics
-// @route   GET /api/orders/analytics
-// @access  Private/Admin
-const getOrderAnalytics = async (req, res) => {
-  try {
-    // 1. Total Revenue & Orders Count (Only paid or delivered/confirmed if payment isn't strictly tracked via isPaid)
-    // Assuming confirmed/delivered counts as revenue for COD model or isPaid for online
-    const orders = await Order.find({ 
-      orderStatus: { $nin: ['canceled'] } // Exclude canceled
+    const orders = await prisma.order.findMany({
+      where,
+      include: { items: true },
     });
 
-    const totalRevenue = orders.reduce((acc, order) => acc + (order.totalPrice || 0), 0);
-    const totalOrders = orders.length;
-    
-    // 2. Total Products Sold
-    const totalProductsSold = orders.reduce((acc, order) => {
-       return acc + order.orderItems.reduce((acc2, item) => acc2 + item.qty, 0);
-    }, 0);
-
-    // 3. Status Breakdown
-    const statusCounts = orders.reduce((acc, order) => {
-        const status = order.orderStatus || 'pending';
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
+    const revenue = orders.reduce((sum, o) => sum + Number(o.totalPrice), 0);
+    const paid = orders.filter((o) => o.isPaid).reduce((sum, o) => sum + Number(o.totalPrice), 0);
+    const byStatus = orders.reduce((acc, o) => {
+      acc[o.status] = (acc[o.status] || 0) + 1;
+      return acc;
     }, {});
 
-    // 4. Highest Selling Products
-    const productSales = {};
-    for(const order of orders) {
-       for(const item of order.orderItems) {
-           const id = item.product.toString();
-           if (!productSales[id]) {
-               productSales[id] = {
-                   name: item.name,
-                   qty: 0,
-                   revenue: 0,
-                   image: item.image
-               };
-           }
-           productSales[id].qty += item.qty;
-           productSales[id].revenue += item.qty * item.price;
-       }
-    }
-
-    // Convert object to sorted array
-    const topProducts = Object.values(productSales)
-        .sort((a, b) => b.qty - a.qty)
-        .slice(0, 5); // Top 5
-
-    res.json({
-        totalRevenue,
-        totalOrders,
-        totalProductsSold,
-        statusCounts,
-        topProducts
+    const lowStock = await prisma.product.findMany({
+      where: { stock: { lte: 5 } },
+      orderBy: { stock: 'asc' },
+      take: 10,
     });
 
+    res.json({
+      orderCount: orders.length,
+      revenue,
+      paid,
+      byStatus,
+      lowStock: lowStock.map((p) => ({
+        ...p,
+        price: Number(p.price),
+        salePrice: p.salePrice != null ? Number(p.salePrice) : null,
+      })),
+      recentOrders: orders.slice(0, 10).map(serializeOrder),
+    });
   } catch (error) {
-     res.status(500);
-     throw new Error('Analytics Calculation Failed: ' + error.message);
+    res.status(500).json({ message: error.message });
   }
 };
 
 module.exports = {
-  addOrderItems,
-  getOrderById,
-  updateOrderToPaid,
-  getMyOrders,
-  getOrders,
+  createOrder,
+  myOrders,
+  getOrder,
+  listOrders,
   updateOrderStatus,
-  requestOrderCancellation,
-  getOrderAnalytics,
+  deleteOrder,
+  financeSummary,
 };

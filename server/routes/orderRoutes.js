@@ -1,23 +1,23 @@
 const express = require('express');
-const router = express.Router();
 const {
-  addOrderItems,
-  getOrderById,
-  updateOrderToPaid,
-  getMyOrders,
-  getOrders,
+  createOrder,
+  myOrders,
+  getOrder,
+  listOrders,
   updateOrderStatus,
-  requestOrderCancellation,
-  getOrderAnalytics,
+  deleteOrder,
+  financeSummary,
 } = require('../controllers/orderController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, adminOnly, opsOrAdmin } = require('../middleware/authMiddleware');
 
-router.route('/').post(protect, addOrderItems).get(protect, admin, getOrders);
-router.route('/analytics').get(protect, admin, getOrderAnalytics);
-router.route('/myorders').get(protect, getMyOrders);
-router.route('/:id').get(protect, getOrderById);
-router.route('/:id/pay').put(protect, updateOrderToPaid);
-router.route('/:id/status').put(protect, admin, updateOrderStatus);
-router.route('/:id/cancel').post(protect, requestOrderCancellation);
+const router = express.Router();
+
+router.post('/', protect, createOrder);
+router.get('/mine', protect, myOrders);
+router.get('/finance', protect, adminOnly, financeSummary);
+router.get('/', protect, opsOrAdmin, listOrders);
+router.get('/:id', protect, getOrder);
+router.patch('/:id/status', protect, opsOrAdmin, updateOrderStatus);
+router.delete('/:id', protect, opsOrAdmin, deleteOrder);
 
 module.exports = router;

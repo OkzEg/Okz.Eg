@@ -19,6 +19,7 @@ import CartPage from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import OrderSuccessPage from './pages/OrderSuccessPage';
 // Dashboard is the staff landing page — load eagerly so the shell isn't blank
 import StaffDashboard from './pages/staff/Dashboard';
 
@@ -126,7 +127,11 @@ function StoreShell({ children }) {
 
 function RequireCustomer({ children }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  if (!user) {
+    const redirect = `${location.pathname}${location.search || ''}`;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(redirect)}`} replace />;
+  }
   return children;
 }
 
@@ -164,7 +169,8 @@ function AppRoutes() {
             <Route path="/product/:id" element={<ProductPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/checkout" element={<RequireCustomer><CheckoutPage /></RequireCustomer>} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/order-success" element={<OrderSuccessPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/account" element={<RequireCustomer><AccountPage /></RequireCustomer>} />

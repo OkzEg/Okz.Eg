@@ -53,7 +53,7 @@ export default function StaffOrders() {
             {orders.map((o) => (
               <tr key={o.id}>
                 <td className="font-mono text-xs">{o.id.slice(0, 8)}</td>
-                <td>{o.user?.name}</td>
+                <td>{o.customerName || o.user?.name || 'Guest'}</td>
                 <td>{o.items?.length || 0}</td>
                 <td>{formatMoney(o.totalPrice)}</td>
                 <td>{o.paymentMethod}</td>

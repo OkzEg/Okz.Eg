@@ -13,6 +13,180 @@ const SORT_OPTIONS = [
   { value: 'price_desc', label: 'Price: High to Low' },
 ];
 
+function parseBound(raw) {
+  const trimmed = String(raw ?? '').trim();
+  if (trimmed === '') return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
+function FiltersPanel({
+  embedded = false,
+  onClose,
+  selectedTypes,
+  selectedColors,
+  selectedSizes,
+  availableColors,
+  availableSizes,
+  minInput,
+  maxInput,
+  onMinChange,
+  onMaxChange,
+  onPriceBlur,
+  onToggleType,
+  onToggleColor,
+  onToggleSize,
+  onClear,
+}) {
+  return (
+    <div
+      className={
+        embedded
+          ? 'flex h-full flex-col'
+          : 'flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-timber-200/80 bg-white p-5 shadow-[0_12px_40px_rgba(61,46,34,0.08)]'
+      }
+    >
+      <div className="mb-5 shrink-0">
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-timber-400">
+          Filters
+        </p>
+        <h2 className="mt-1.5 font-display text-2xl tracking-wide text-timber-800">
+          Find your gear
+        </h2>
+        <p className="mt-1 text-[13px] text-timber-400">Results update as you filter.</p>
+      </div>
+
+      <div className="flex-1 space-y-5 overflow-y-auto pr-1">
+        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+            Category
+          </label>
+          <div className="space-y-2.5">
+            {PRODUCT_TYPES.map((t) => (
+              <label
+                key={t.value}
+                className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.includes(t.value)}
+                  onChange={() => onToggleType(t.value)}
+                  className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {availableColors.length > 0 && (
+          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+              Colors
+            </label>
+            <div className="max-h-40 space-y-2.5 overflow-y-auto">
+              {availableColors.map((c) => (
+                <label
+                  key={c}
+                  className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedColors.includes(c)}
+                    onChange={() => onToggleColor(c)}
+                    className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
+                  />
+                  {c}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {availableSizes.length > 0 && (
+          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+              Sizes
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {availableSizes.map((s) => {
+                const active = selectedSizes.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onToggleSize(s)}
+                    className={`min-w-[2.5rem] rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      active
+                        ? 'border-timber-800 bg-timber-800 text-white'
+                        : 'border-timber-200 bg-white text-timber-700 hover:border-timber-500'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
+          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+            Price range (EGP)
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="Min"
+              className="w-full rounded-xl border border-timber-200 bg-white px-3.5 py-2.5 text-sm text-timber-800 placeholder:text-timber-300 focus:border-timber-500 focus:outline-none focus:ring-2 focus:ring-wheat/30"
+              value={minInput}
+              onChange={(e) => onMinChange(e.target.value)}
+              onBlur={onPriceBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onPriceBlur();
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="Max"
+              className="w-full rounded-xl border border-timber-200 bg-white px-3.5 py-2.5 text-sm text-timber-800 placeholder:text-timber-300 focus:border-timber-500 focus:outline-none focus:ring-2 focus:ring-wheat/30"
+              value={maxInput}
+              onChange={(e) => onMaxChange(e.target.value)}
+              onBlur={onPriceBlur}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onPriceBlur();
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          onClear();
+          onClose?.();
+        }}
+        className="mt-5 w-full shrink-0 rounded-xl border border-timber-200 bg-white px-4 py-2.5 text-sm font-medium text-timber-600 transition hover:border-timber-500 hover:text-timber-800"
+      >
+        Clear filters
+      </button>
+    </div>
+  );
+}
+
 export default function ShopPage() {
   const [params, setParams] = useSearchParams();
   const [allProducts, setAllProducts] = useState([]);
@@ -59,13 +233,6 @@ export default function ShopPage() {
       }
     });
     setParams(next);
-  };
-
-  const parseBound = (raw) => {
-    const trimmed = String(raw ?? '').trim();
-    if (trimmed === '') return null;
-    const n = Number(trimmed);
-    return Number.isFinite(n) ? n : null;
   };
 
   const applyPriceToUrl = () => {
@@ -173,153 +340,22 @@ export default function ShopPage() {
     sort,
   ]);
 
-  const FiltersPanel = ({ onClose, embedded = false }) => (
-    <div
-      className={
-        embedded
-          ? 'flex h-full flex-col'
-          : 'flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-timber-200/80 bg-white p-5 shadow-[0_12px_40px_rgba(61,46,34,0.08)]'
-      }
-    >
-      <div className="mb-5 shrink-0">
-        <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-timber-400">
-          Filters
-        </p>
-        <h2 className="mt-1.5 font-display text-2xl tracking-wide text-timber-800">
-          Find your gear
-        </h2>
-        <p className="mt-1 text-[13px] text-timber-400">Results update as you filter.</p>
-      </div>
-
-      <div className="flex-1 space-y-5 overflow-y-auto pr-1">
-        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
-            Category
-          </label>
-          <div className="space-y-2.5">
-            {PRODUCT_TYPES.map((t) => (
-              <label
-                key={t.value}
-                className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedTypes.includes(t.value)}
-                  onChange={() => toggleType(t.value)}
-                  className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
-                />
-                {t.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {availableColors.length > 0 && (
-          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
-              Colors
-            </label>
-            <div className="max-h-40 space-y-2.5 overflow-y-auto">
-              {availableColors.map((c) => (
-                <label
-                  key={c}
-                  className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedColors.includes(c)}
-                    onChange={() => toggleInList('colors', selectedColors, c)}
-                    className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
-                  />
-                  {c}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {availableSizes.length > 0 && (
-          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
-              Sizes
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {availableSizes.map((s) => {
-                const active = selectedSizes.includes(s);
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => toggleInList('sizes', selectedSizes, s)}
-                    className={`min-w-[2.5rem] rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      active
-                        ? 'border-timber-800 bg-timber-800 text-white'
-                        : 'border-timber-200 bg-white text-timber-700 hover:border-timber-500'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
-            Price range (EGP)
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="number"
-              min="0"
-              inputMode="numeric"
-              placeholder="Min"
-              className="w-full rounded-xl border border-timber-200 bg-white px-3.5 py-2.5 text-sm text-timber-800 placeholder:text-timber-300 focus:border-timber-500 focus:outline-none focus:ring-2 focus:ring-wheat/30"
-              value={minInput}
-              onChange={(e) => setMinInput(e.target.value)}
-              onBlur={applyPriceToUrl}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  applyPriceToUrl();
-                  e.currentTarget.blur();
-                }
-              }}
-            />
-            <input
-              type="number"
-              min="0"
-              inputMode="numeric"
-              placeholder="Max"
-              className="w-full rounded-xl border border-timber-200 bg-white px-3.5 py-2.5 text-sm text-timber-800 placeholder:text-timber-300 focus:border-timber-500 focus:outline-none focus:ring-2 focus:ring-wheat/30"
-              value={maxInput}
-              onChange={(e) => setMaxInput(e.target.value)}
-              onBlur={applyPriceToUrl}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  applyPriceToUrl();
-                  e.currentTarget.blur();
-                }
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => {
-          clearFilters();
-          onClose?.();
-        }}
-        className="mt-5 w-full shrink-0 rounded-xl border border-timber-200 bg-white px-4 py-2.5 text-sm font-medium text-timber-600 transition hover:border-timber-500 hover:text-timber-800"
-      >
-        Clear filters
-      </button>
-    </div>
-  );
+  const filterProps = {
+    selectedTypes,
+    selectedColors,
+    selectedSizes,
+    availableColors,
+    availableSizes,
+    minInput,
+    maxInput,
+    onMinChange: setMinInput,
+    onMaxChange: setMaxInput,
+    onPriceBlur: applyPriceToUrl,
+    onToggleType: toggleType,
+    onToggleColor: (c) => toggleInList('colors', selectedColors, c),
+    onToggleSize: (s) => toggleInList('sizes', selectedSizes, s),
+    onClear: clearFilters,
+  };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#faf8f4]">
@@ -327,7 +363,7 @@ export default function ShopPage() {
         <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="hidden lg:block">
             <div className="sticky top-24">
-              <FiltersPanel />
+              <FiltersPanel {...filterProps} />
             </div>
           </aside>
 
@@ -421,7 +457,11 @@ export default function ShopPage() {
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-timber-200/80 bg-white p-4 shadow-sm">
-              <FiltersPanel embedded onClose={() => setMobileFilters(false)} />
+              <FiltersPanel
+                {...filterProps}
+                embedded
+                onClose={() => setMobileFilters(false)}
+              />
             </div>
           </div>
         </div>

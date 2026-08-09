@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { ChevronDown, Minus, Plus, Truck } from 'lucide-react';
+import {
+  ChevronDown,
+  Heart,
+  Minus,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  Truck,
+} from 'lucide-react';
 import api from '../api/axios';
 import { useCart } from '../context/CartContext';
-import { formatMoney, getImageUrl, PRODUCT_TYPES } from '../utils/helpers';
+import { useWishlist } from '../context/WishlistContext';
+import { formatMoney, getImageUrl, PRODUCT_TYPES, FREE_SHIPPING_MIN } from '../utils/helpers';
 
 function Accordion({ title, open, onToggle, children }) {
   return (
@@ -65,9 +74,38 @@ const careByType = {
   ],
 };
 
+const fitTipByType = {
+  shoe: 'True to size — size up for thicker socks or wider feet.',
+  belt: 'Measure your usual waist and match the chart.',
+  default: 'True to size for most customers.',
+};
+
+function TrustRow() {
+  return (
+    <ul className="mt-4 space-y-2 text-sm text-timber-500">
+      <li className="flex items-center gap-2">
+        <Truck className="h-4 w-4 shrink-0 text-timber-400" />
+        Ships in 2–3 business days · Cash on delivery
+      </li>
+      <li className="flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 shrink-0 text-timber-400" />
+        Free shipping on orders over {formatMoney(FREE_SHIPPING_MIN)}
+      </li>
+      <li className="flex items-center gap-2">
+        <RefreshCw className="h-4 w-4 shrink-0 text-timber-400" />
+        <Link to="/returns" className="underline-offset-2 hover:underline">
+          14-day returns
+        </Link>{' '}
+        on unworn items
+      </li>
+    </ul>
+  );
+}
+
 export default function ProductPage() {
   const { id } = useParams();
   const { addItem } = useCart();
+  const { isSaved, toggle } = useWishlist();
   const [product, setProduct] = useState(null);
   const [color, setColor] = useState('');
   const [size, setSize] = useState('');
@@ -108,20 +146,33 @@ export default function ProductPage() {
   const lowStock = product.stock > 0 && product.stock <= 5;
   const sizeGuide = sizeGuideByType[product.type] || sizeGuideByType.default;
   const care = careByType[product.type] || careByType.default;
+  const fitTip = fitTipByType[product.type] || fitTipByType.default;
+  const liked = isSaved(product.id);
+  const canAdd = product.stock >= 1;
 
   const add = () => {
     if (product.stock < 1) return toast.error('Out of stock');
     if (product.colors?.length && !color) return toast.error('Select a color');
     if (product.sizes?.length && !size) return toast.error('Select a size');
     addItem(product, qty, color || null, size || null);
-    toast.success('Added to cart');
+    toast.success(
+      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span>Added to cart</span>
+        <Link to="/cart" className="font-semibold underline underline-offset-2">
+          View cart
+        </Link>
+        <Link to="/checkout" className="font-semibold underline underline-offset-2">
+          Checkout
+        </Link>
+      </span>
+    );
   };
 
   const toggleSection = (key) =>
     setOpenSection((current) => (current === key ? '' : key));
 
   return (
-    <div className="bg-[#faf8f4]">
+    <div className="bg-[#faf8f4] pb-24 lg:pb-0">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
         <nav className="mb-6 text-xs uppercase tracking-wider text-timber-400">
           <Link to="/shop" className="hover:text-timber-700">
@@ -132,7 +183,6 @@ export default function ProductPage() {
         </nav>
 
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
-          {/* Gallery */}
           <div className="space-y-3">
             <div className="relative aspect-[4/5] overflow-hidden rounded-[16px] border border-timber-200/70 bg-timber-100 shadow-[0_18px_40px_-28px_rgba(61,46,34,0.45)]">
               {photos[activePhoto] ? (
@@ -149,6 +199,16 @@ export default function ProductPage() {
                   Sale
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => toggle(product)}
+                className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-sm"
+                aria-label={liked ? 'Remove from wishlist' : 'Save to wishlist'}
+              >
+                <Heart
+                  className={`h-5 w-5 ${liked ? 'fill-wheat text-wheat' : 'text-timber-700'}`}
+                />
+              </button>
             </div>
 
             {photos.length > 1 && (
@@ -175,7 +235,6 @@ export default function ProductPage() {
             )}
           </div>
 
-          {/* Buy box */}
           <div className="lg:sticky lg:top-24 lg:self-start">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-timber-400">
               {typeLabel}
@@ -236,6 +295,7 @@ export default function ProductPage() {
                     Size chart
                   </button>
                 </div>
+                <p className="mb-3 text-sm text-timber-500">{fitTip}</p>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((s) => (
                     <button
@@ -299,19 +359,15 @@ export default function ProductPage() {
 
             <button
               type="button"
-              className="btn-wheat mt-6 w-full py-3.5 text-sm font-bold uppercase tracking-[0.14em]"
+              className="btn-wheat mt-6 hidden w-full py-3.5 text-sm font-bold uppercase tracking-[0.14em] lg:inline-flex"
               onClick={add}
-              disabled={product.stock < 1}
+              disabled={!canAdd}
             >
               Add to cart
             </button>
 
-            <div className="mt-4 flex items-center gap-2 text-sm text-timber-500">
-              <Truck className="h-4 w-4" />
-              Orders take 2–3 business days
-            </div>
+            <TrustRow />
 
-            {/* Detail sections */}
             <div className="mt-10 border-t border-timber-200">
               <Accordion
                 title="Product details"
@@ -398,12 +454,30 @@ export default function ProductPage() {
                   Orders take 2–3 business days
                 </p>
                 <p className="mt-2 text-timber-500">
-                  Cash or card on delivery available at checkout. Free shipping on orders over
-                  EGP 2,000.
+                  Cash on delivery, InstaPay, and Vodafone Cash available at checkout. Free shipping on
+                  orders over EGP 2,000.
                 </p>
               </Accordion>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile sticky ATC */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-timber-200 bg-cream/95 px-4 py-3 backdrop-blur-md lg:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-timber-900">{product.name}</p>
+            <p className="text-sm tabular-nums text-timber-600">{formatMoney(price)}</p>
+          </div>
+          <button
+            type="button"
+            className="btn-wheat shrink-0 px-5 py-3 text-sm font-bold uppercase tracking-[0.12em]"
+            onClick={add}
+            disabled={!canAdd}
+          >
+            Add to cart
+          </button>
         </div>
       </div>
     </div>

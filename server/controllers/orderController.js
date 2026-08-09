@@ -1,11 +1,142 @@
 const prisma = require('../lib/prisma');
 const cache = require('../lib/cache');
 
+const FREE_SHIPPING_MIN = 2000;
+const SHIPPING_FEE = 75;
+
 const effectivePrice = (product) => {
   if (product.isSaleActive && product.salePrice != null) {
     return Number(product.salePrice);
   }
   return Number(product.price);
+};
+
+const normalizePhone = (phone) => String(phone || '').replace(/\s+/g, '').trim();
+
+const buildOrderItems = async (orderItems) => {
+  if (!orderItems?.length) {
+    const err = new Error('No order items');
+    err.status = 400;
+    throw err;
+  }
+
+  const productIds = orderItems.map((i) => i.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+  });
+  const byId = Object.fromEntries(products.map((p) => [p.id, p]));
+
+  let itemsPrice = 0;
+  const itemsData = [];
+
+  for (const item of orderItems) {
+    const product = byId[item.productId];
+    if (!product) {
+      const err = new Error(`Product not found: ${item.productId}`);
+      err.status = 400;
+      throw err;
+    }
+    const qty = Number(item.qty) || 0;
+    if (qty < 1) {
+      const err = new Error(`Invalid quantity for ${product.name}`);
+      err.status = 400;
+      throw err;
+    }
+    if (product.stock < qty) {
+      const err = new Error(`Insufficient stock for ${product.name}`);
+      err.status = 400;
+      throw err;
+    }
+    const price = effectivePrice(product);
+    itemsPrice += price * qty;
+    itemsData.push({
+      productId: product.id,
+      name: product.name,
+      qty,
+      image: product.photos[0] || '',
+      price,
+      color: item.color || null,
+      size: item.size || null,
+    });
+  }
+
+  return { itemsPrice, itemsData };
+};
+
+const resolveCoupon = async (couponCode, itemsPrice) => {
+  let discountAmount = 0;
+  let couponId = null;
+  let savedCouponCode = null;
+  if (!couponCode) {
+    return { discountAmount, couponId, savedCouponCode };
+  }
+
+  const coupon = await prisma.coupon.findUnique({
+    where: { code: String(couponCode).toUpperCase() },
+  });
+  if (!coupon || !coupon.isActive) {
+    const err = new Error('Invalid coupon');
+    err.status = 400;
+    throw err;
+  }
+  discountAmount = (itemsPrice * coupon.discountPercentage) / 100;
+  couponId = coupon.id;
+  savedCouponCode = coupon.code;
+  return { discountAmount, couponId, savedCouponCode };
+};
+
+const persistOrder = async ({
+  userId = null,
+  guestName = null,
+  guestPhone = null,
+  guestEmail = null,
+  paymentMethod,
+  shippingAddress,
+  itemsData,
+  itemsPrice,
+  shippingPrice,
+  discountAmount,
+  totalPrice,
+  couponId,
+  savedCouponCode,
+}) => {
+  const order = await prisma.$transaction(async (tx) => {
+    for (const item of itemsData) {
+      const updated = await tx.product.updateMany({
+        where: { id: item.productId, stock: { gte: item.qty } },
+        data: { stock: { decrement: item.qty } },
+      });
+      if (updated.count === 0) {
+        throw new Error(`Insufficient stock for ${item.name}`);
+      }
+    }
+
+    return tx.order.create({
+      data: {
+        userId,
+        guestName,
+        guestPhone,
+        guestEmail,
+        paymentMethod,
+        shippingAddress,
+        itemsPrice,
+        shippingPrice,
+        discountAmount,
+        totalPrice,
+        couponId,
+        couponCode: savedCouponCode,
+        items: { create: itemsData },
+      },
+      include: {
+        items: true,
+        user: { select: { id: true, name: true, email: true, phone: true } },
+      },
+    });
+  });
+
+  cache.invalidate('products');
+  cache.invalidate('product');
+  return order;
 };
 
 const createOrder = async (req, res) => {
@@ -15,102 +146,94 @@ const createOrder = async (req, res) => {
     }
 
     const { orderItems, paymentMethod, shippingAddress, couponCode } = req.body;
-    if (!orderItems?.length) {
-      return res.status(400).json({ message: 'No order items' });
-    }
     if (!paymentMethod || !shippingAddress) {
       return res.status(400).json({ message: 'Payment method and shipping address required' });
     }
 
-    const productIds = orderItems.map((i) => i.productId);
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
-    });
-    const byId = Object.fromEntries(products.map((p) => [p.id, p]));
-
-    let itemsPrice = 0;
-    const itemsData = [];
-
-    for (const item of orderItems) {
-      const product = byId[item.productId];
-      if (!product) {
-        return res.status(400).json({ message: `Product not found: ${item.productId}` });
-      }
-      const qty = Number(item.qty) || 0;
-      if (qty < 1) {
-        return res.status(400).json({ message: `Invalid quantity for ${product.name}` });
-      }
-      if (product.stock < qty) {
-        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
-      }
-      const price = effectivePrice(product);
-      itemsPrice += price * qty;
-      itemsData.push({
-        productId: product.id,
-        name: product.name,
-        qty,
-        image: product.photos[0] || '',
-        price,
-        color: item.color || null,
-        size: item.size || null,
-      });
-    }
-
-    let discountAmount = 0;
-    let couponId = null;
-    let savedCouponCode = null;
-    if (couponCode) {
-      const coupon = await prisma.coupon.findUnique({
-        where: { code: couponCode.toUpperCase() },
-      });
-      if (!coupon || !coupon.isActive) {
-        return res.status(400).json({ message: 'Invalid coupon' });
-      }
-      discountAmount = (itemsPrice * coupon.discountPercentage) / 100;
-      couponId = coupon.id;
-      savedCouponCode = coupon.code;
-    }
-
-    const shippingPrice = itemsPrice >= 2000 ? 0 : 75;
+    const { itemsPrice, itemsData } = await buildOrderItems(orderItems);
+    const { discountAmount, couponId, savedCouponCode } = await resolveCoupon(
+      couponCode,
+      itemsPrice
+    );
+    const shippingPrice = itemsPrice >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
     const totalPrice = Math.max(0, itemsPrice + shippingPrice - discountAmount);
 
-    const order = await prisma.$transaction(async (tx) => {
-      for (const item of itemsData) {
-        // Atomic deduct — fails if stock was taken by another order
-        const updated = await tx.product.updateMany({
-          where: { id: item.productId, stock: { gte: item.qty } },
-          data: { stock: { decrement: item.qty } },
-        });
-        if (updated.count === 0) {
-          throw new Error(`Insufficient stock for ${item.name}`);
-        }
-      }
-
-      return tx.order.create({
-        data: {
-          userId: req.user.id,
-          paymentMethod,
-          shippingAddress,
-          itemsPrice,
-          shippingPrice,
-          discountAmount,
-          totalPrice,
-          couponId,
-          couponCode: savedCouponCode,
-          items: { create: itemsData },
-        },
-        include: {
-          items: true,
-          user: { select: { id: true, name: true, email: true, phone: true } },
-        },
-      });
+    const order = await persistOrder({
+      userId: req.user.id,
+      paymentMethod,
+      shippingAddress,
+      itemsData,
+      itemsPrice,
+      shippingPrice,
+      discountAmount,
+      totalPrice,
+      couponId,
+      savedCouponCode,
     });
-
-    cache.invalidate('products');
-    cache.invalidate('product');
 
     res.status(201).json(serializeOrder(order));
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    if (error.message?.startsWith('Insufficient stock')) {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const createGuestOrder = async (req, res) => {
+  try {
+    const {
+      orderItems,
+      paymentMethod,
+      shippingAddress,
+      couponCode,
+      guestName,
+      guestPhone,
+      guestEmail,
+    } = req.body;
+
+    const name = String(guestName || '').trim();
+    const phone = normalizePhone(guestPhone);
+    const email = guestEmail ? String(guestEmail).trim().toLowerCase() : null;
+
+    if (!name || !phone) {
+      return res.status(400).json({ message: 'Name and phone are required' });
+    }
+    if (!paymentMethod || !shippingAddress) {
+      return res.status(400).json({ message: 'Payment method and shipping address required' });
+    }
+    if (!shippingAddress.street || !shippingAddress.city) {
+      return res.status(400).json({ message: 'Street and city are required' });
+    }
+
+    const { itemsPrice, itemsData } = await buildOrderItems(orderItems);
+    const { discountAmount, couponId, savedCouponCode } = await resolveCoupon(
+      couponCode,
+      itemsPrice
+    );
+    const shippingPrice = itemsPrice >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
+    const totalPrice = Math.max(0, itemsPrice + shippingPrice - discountAmount);
+
+    const order = await persistOrder({
+      userId: null,
+      guestName: name,
+      guestPhone: phone,
+      guestEmail: email,
+      paymentMethod,
+      shippingAddress,
+      itemsData,
+      itemsPrice,
+      shippingPrice,
+      discountAmount,
+      totalPrice,
+      couponId,
+      savedCouponCode,
+    });
+
+    res.status(201).json(serializeOrder(order));
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
     if (error.message?.startsWith('Insufficient stock')) {
       return res.status(400).json({ message: error.message });
     }
@@ -125,6 +248,9 @@ const serializeOrder = (order) => ({
   discountAmount: Number(order.discountAmount),
   totalPrice: Number(order.totalPrice),
   items: order.items?.map((i) => ({ ...i, price: Number(i.price) })),
+  customerName: order.user?.name || order.guestName || null,
+  customerPhone: order.user?.phone || order.guestPhone || null,
+  customerEmail: order.user?.email || order.guestEmail || null,
 });
 
 const myOrders = async (req, res) => {
@@ -152,7 +278,7 @@ const getOrder = async (req, res) => {
     });
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    const isOwner = order.userId === req.user.id;
+    const isOwner = order.userId && order.userId === req.user.id;
     const isStaff = ['admin', 'ops'].includes(req.user.role);
     if (!isOwner && !isStaff) {
       return res.status(403).json({ message: 'Not authorized' });
@@ -285,6 +411,7 @@ const financeSummary = async (req, res) => {
 
 module.exports = {
   createOrder,
+  createGuestOrder,
   myOrders,
   getOrder,
   listOrders,

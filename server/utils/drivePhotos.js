@@ -11,7 +11,7 @@ const IMAGE_MIME = new Set([
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i;
 
-const fileViewUrl = (id) => `https://drive.google.com/uc?export=view&id=${id}`;
+const fileViewUrl = (id) => `https://lh3.googleusercontent.com/d/${id}`;
 
 const extractFolderId = (url) => {
   if (!url) return null;

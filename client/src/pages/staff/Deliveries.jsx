@@ -80,8 +80,8 @@ export default function StaffDeliveries() {
             {orders.map((o) => (
               <tr key={o.id}>
                 <td className="font-mono text-xs">{o.id.slice(0, 8)}</td>
-                <td>{o.user?.name}</td>
-                <td>{o.user?.phone || '—'}</td>
+                <td>{o.customerName || o.user?.name || 'Guest'}</td>
+                <td>{o.customerPhone || o.user?.phone || '—'}</td>
                 <td className="max-w-[180px] truncate">
                   {o.shippingAddress?.city}, {o.shippingAddress?.street}
                 </td>

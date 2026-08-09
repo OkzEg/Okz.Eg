@@ -40,7 +40,7 @@ export default function HomePage() {
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-timber-800/95 via-timber-700/60 to-transparent" />
         <div className="relative max-w-7xl mx-auto px-5 sm:px-8 min-h-[100svh] flex items-center">
-          <div className="max-w-xl text-white pt-28 pb-20">
+          <div className="max-w-xl text-white pt-36 sm:pt-40 pb-20">
             <h1 className="font-display text-6xl sm:text-7xl leading-[0.95] tracking-wide">
               {slide?.title || 'Built for the long haul.'}
             </h1>

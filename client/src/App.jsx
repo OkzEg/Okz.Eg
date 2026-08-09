@@ -20,6 +20,8 @@ import WishlistPage from './pages/WishlistPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
 // Dashboard is the staff landing page — load eagerly so the shell isn't blank
 import StaffDashboard from './pages/staff/Dashboard';
 
@@ -178,6 +180,8 @@ function AppRoutes() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/returns" element={<ReturnsPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
 
             <Route path="/staff" element={<StaffHome />} />
             <Route path="/staff/dashboard" element={<StaffRoute page="dashboard"><StaffDashboard /></StaffRoute>} />

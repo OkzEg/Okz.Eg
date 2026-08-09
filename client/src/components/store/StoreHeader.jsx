@@ -9,9 +9,8 @@ import BrandLogo from '../BrandLogo';
 
 const NAV = [
   { to: '/shop', label: 'Shop' },
-  { to: '/shop?type=shoe', label: 'Boots' },
-  { to: '/shop?type=bundle', label: 'Bundles' },
-  { to: '/shop?type=belt', label: 'Belts' },
+  { to: '/about', label: 'About' },
+  { to: '/contact', label: 'Contact' },
 ];
 
 export default function StoreHeader() {
@@ -86,6 +85,7 @@ export default function StoreHeader() {
                     isActive && solid ? 'text-wheat' : linkCls
                   }`
                 }
+                end={item.to === '/shop' ? false : true}
               >
                 {item.label}
               </NavLink>

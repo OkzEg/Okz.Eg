@@ -1,5 +1,5 @@
-/** Flip to true (or set VITE_COMING_SOON=true) to show the coming soon page. */
+/** Production shows coming soon unless VITE_COMING_SOON=false. Dev is off unless VITE_COMING_SOON=true. */
 export const COMING_SOON =
-  import.meta.env.VITE_COMING_SOON === undefined
+  import.meta.env.VITE_COMING_SOON === 'false'
     ? false
-    : import.meta.env.VITE_COMING_SOON === 'true';
+    : import.meta.env.VITE_COMING_SOON === 'true' || import.meta.env.PROD;

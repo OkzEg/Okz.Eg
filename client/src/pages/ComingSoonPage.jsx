@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 const ACCENT = '#b87c4c';
 const INK = '#231f20';
 
@@ -36,6 +38,13 @@ export default function ComingSoonPage() {
         >
           Premium boots &amp; gear
         </p>
+
+        <Link
+          to="/login"
+          className="mt-6 text-[10px] font-medium uppercase tracking-[0.22em] text-timber-400/80 transition hover:text-timber-600"
+        >
+          Admin
+        </Link>
       </div>
 
       <style>{`

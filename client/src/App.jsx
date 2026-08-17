@@ -140,6 +140,7 @@ function RequireCustomer({ children }) {
 function StaffHome() {
   const { user } = useAuth();
   if (!user || !isStaff(user)) return <Navigate to="/login" replace />;
+  if (COMING_SOON && user.role !== 'admin') return <Navigate to="/login" replace />;
   return <Navigate to={defaultStaffPage(user.role)} replace />;
 }
 

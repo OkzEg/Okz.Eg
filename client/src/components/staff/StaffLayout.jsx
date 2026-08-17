@@ -2,12 +2,14 @@ import { Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess, defaultStaffPage, isStaff } from '../../utils/permissions';
+import { COMING_SOON } from '../../config';
 
 export default function StaffLayout({ children, page }) {
   const { user } = useAuth();
 
   if (!user) return <Navigate to="/login" replace />;
   if (!isStaff(user)) return <Navigate to="/" replace />;
+  if (COMING_SOON && user.role !== 'admin') return <Navigate to="/login" replace />;
   if (page && !canAccess(user, page)) {
     return <Navigate to={defaultStaffPage(user.role)} replace />;
   }

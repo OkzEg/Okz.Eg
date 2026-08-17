@@ -64,6 +64,7 @@ model Product {
   photos       String[]
   colors       String[]
   sizes        String[]    @default([])
+  sizeStock    Json        @default("{}")
   stock        Int         @default(0)
   isSaleActive Boolean     @default(false)
   salePrice    Decimal?    @db.Decimal(10, 2)

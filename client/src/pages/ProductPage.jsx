@@ -13,7 +13,7 @@ import {
 import api from '../api/axios';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { formatMoney, getImageUrl, PRODUCT_TYPES, FREE_SHIPPING_MIN } from '../utils/helpers';
+import { formatMoney, getImageUrl, getAvailableStock, PRODUCT_TYPES, FREE_SHIPPING_MIN } from '../utils/helpers';
 
 function Accordion({ title, open, onToggle, children }) {
   return (
@@ -117,11 +117,16 @@ export default function ProductPage() {
     api.get(`/products/${id}`).then((r) => {
       setProduct(r.data);
       setColor(r.data.colors?.[0] || '');
-      setSize(r.data.sizes?.[0] || '');
+      const firstInStock = r.data.sizes?.find((s) => getAvailableStock(r.data, s) > 0);
+      setSize(firstInStock || r.data.sizes?.[0] || '');
       setActivePhoto(0);
       setQty(1);
     });
   }, [id]);
+
+  useEffect(() => {
+    setQty(1);
+  }, [size]);
 
   const detailBullets = useMemo(() => {
     if (!product?.description) return [];
@@ -143,18 +148,19 @@ export default function ProductPage() {
   const typeLabel =
     PRODUCT_TYPES.find((t) => t.value === product.type)?.label ||
     product.type.replace('_', ' ');
-  const lowStock = product.stock > 0 && product.stock <= 5;
+  const availableStock = getAvailableStock(product, size);
+  const lowStock = availableStock > 0 && availableStock <= 5;
   const sizeGuide = sizeGuideByType[product.type] || sizeGuideByType.default;
   const care = careByType[product.type] || careByType.default;
   const fitTip = fitTipByType[product.type] || fitTipByType.default;
   const liked = isSaved(product.id);
-  const canAdd = product.stock >= 1;
+  const canAdd = availableStock >= 1;
 
   const add = () => {
-    if (product.stock < 1) return toast.error('Out of stock');
+    if (availableStock < 1) return toast.error('Out of stock');
     if (product.colors?.length && !color) return toast.error('Select a color');
     if (product.sizes?.length && !size) return toast.error('Select a size');
-    addItem(product, qty, color || null, size || null);
+    addItem({ ...product, stock: availableStock }, qty, color || null, size || null);
     toast.success(
       <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
         <span>Added to cart</span>
@@ -297,20 +303,27 @@ export default function ProductPage() {
                 </div>
                 <p className="mb-3 text-sm text-timber-500">{fitTip}</p>
                 <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((s) => (
+                  {product.sizes.map((s) => {
+                    const sizeStock = getAvailableStock(product, s);
+                    const outOfSize = sizeStock < 1;
+                    return (
                     <button
                       key={s}
                       type="button"
-                      onClick={() => setSize(s)}
+                      onClick={() => !outOfSize && setSize(s)}
+                      disabled={outOfSize}
                       className={`min-w-[3rem] rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${
-                        size === s
+                        outOfSize
+                          ? 'cursor-not-allowed border-timber-100 bg-timber-50 text-timber-300 line-through'
+                          : size === s
                           ? 'border-timber-800 bg-timber-800 text-white'
                           : 'border-timber-200 bg-white text-timber-800 hover:border-timber-500'
                       }`}
                     >
                       {s}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -334,9 +347,9 @@ export default function ProductPage() {
                   type="button"
                   className="px-3 py-2.5 text-timber-700 hover:bg-timber-50"
                   onClick={() =>
-                    setQty((q) => Math.min(product.stock || 1, q + 1))
+                    setQty((q) => Math.min(availableStock || 1, q + 1))
                   }
-                  disabled={qty >= product.stock}
+                  disabled={qty >= availableStock}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -345,15 +358,15 @@ export default function ProductPage() {
 
             {lowStock && (
               <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-amber-700">
-                Low stock — only {product.stock} left
+                Low stock — only {availableStock} left
               </p>
             )}
-            {product.stock < 1 && (
+            {availableStock < 1 && (
               <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-red-600">
                 Out of stock
               </p>
             )}
-            {product.stock > 5 && (
+            {availableStock > 5 && (
               <p className="mt-4 text-sm text-timber-500">In stock</p>
             )}
 

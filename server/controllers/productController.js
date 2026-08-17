@@ -6,7 +6,32 @@ const serializeProduct = (p) => ({
   ...p,
   price: Number(p.price),
   salePrice: p.salePrice != null ? Number(p.salePrice) : null,
+  sizeStock: p.sizeStock && typeof p.sizeStock === 'object' ? p.sizeStock : {},
 });
+
+const normalizeSizeStock = (sizeStock) => {
+  if (!sizeStock || typeof sizeStock !== 'object') return {};
+  const out = {};
+  for (const [key, value] of Object.entries(sizeStock)) {
+    const size = String(key).trim();
+    if (!size) continue;
+    const qty = Number(value);
+    if (Number.isFinite(qty) && qty >= 0) out[size] = Math.floor(qty);
+  }
+  return out;
+};
+
+const computeStock = (sizes, sizeStock, fallbackStock = 0) => {
+  if (!sizes?.length) return Math.max(0, Number(fallbackStock) || 0);
+  return sizes.reduce((sum, size) => sum + (Number(sizeStock?.[size]) || 0), 0);
+};
+
+const getAvailableStock = (product, size) => {
+  if (product.sizes?.length && size) {
+    return Number(product.sizeStock?.[size]) || 0;
+  }
+  return Number(product.stock) || 0;
+};
 
 const PRODUCT_SELECT = {
   id: true,
@@ -17,6 +42,7 @@ const PRODUCT_SELECT = {
   photos: true,
   colors: true,
   sizes: true,
+  sizeStock: true,
   stock: true,
   isSaleActive: true,
   salePrice: true,
@@ -114,6 +140,7 @@ const createProduct = async (req, res) => {
       photos,
       colors,
       sizes,
+      sizeStock,
       stock,
       isSaleActive,
       salePrice,
@@ -123,6 +150,9 @@ const createProduct = async (req, res) => {
     }
 
     const resolvedPhotos = await resolvePhotoLinks(photos || []);
+    const normalizedSizes = sizes || [];
+    const normalizedSizeStock = normalizeSizeStock(sizeStock);
+    const totalStock = computeStock(normalizedSizes, normalizedSizeStock, stock);
 
     const product = await prisma.product.create({
       data: {
@@ -132,8 +162,9 @@ const createProduct = async (req, res) => {
         type,
         photos: resolvedPhotos,
         colors: colors || [],
-        sizes: sizes || [],
-        stock: stock ?? 0,
+        sizes: normalizedSizes,
+        sizeStock: normalizedSizeStock,
+        stock: totalStock,
         isSaleActive: Boolean(isSaleActive),
         salePrice: salePrice || null,
       },
@@ -154,6 +185,7 @@ const ALLOWED_UPDATE = [
   'photos',
   'colors',
   'sizes',
+  'sizeStock',
   'stock',
   'isSaleActive',
   'salePrice',
@@ -167,6 +199,19 @@ const updateProduct = async (req, res) => {
     }
     if (data.photos) {
       data.photos = await resolvePhotoLinks(data.photos);
+    }
+    if (data.sizeStock !== undefined) {
+      data.sizeStock = normalizeSizeStock(data.sizeStock);
+    }
+    if (data.sizes !== undefined || data.sizeStock !== undefined || data.stock !== undefined) {
+      const existing = await prisma.product.findUnique({
+        where: { id: req.params.id },
+        select: { sizes: true, sizeStock: true, stock: true },
+      });
+      const sizes = data.sizes ?? existing.sizes;
+      const sizeStock = data.sizeStock ?? existing.sizeStock ?? {};
+      const fallbackStock = data.stock ?? existing.stock;
+      data.stock = computeStock(sizes, sizeStock, fallbackStock);
     }
     const product = await prisma.product.update({
       where: { id: req.params.id },
@@ -230,4 +275,5 @@ module.exports = {
   updateProduct,
   adjustStock,
   deleteProduct,
+  getAvailableStock,
 };

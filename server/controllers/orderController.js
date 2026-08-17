@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const cache = require('../lib/cache');
+const { getAvailableStock } = require('./productController');
 
 const FREE_SHIPPING_MIN = 2000;
 const SHIPPING_FEE = 75;
@@ -42,8 +43,15 @@ const buildOrderItems = async (orderItems) => {
       err.status = 400;
       throw err;
     }
-    if (product.stock < qty) {
-      const err = new Error(`Insufficient stock for ${product.name}`);
+    if (product.sizes?.length && !item.size) {
+      const err = new Error(`Select a size for ${product.name}`);
+      err.status = 400;
+      throw err;
+    }
+    const available = getAvailableStock(product, item.size);
+    if (available < qty) {
+      const sizeLabel = item.size ? ` (size ${item.size})` : '';
+      const err = new Error(`Insufficient stock for ${product.name}${sizeLabel}`);
       err.status = 400;
       throw err;
     }
@@ -102,12 +110,34 @@ const persistOrder = async ({
 }) => {
   const order = await prisma.$transaction(async (tx) => {
     for (const item of itemsData) {
-      const updated = await tx.product.updateMany({
-        where: { id: item.productId, stock: { gte: item.qty } },
-        data: { stock: { decrement: item.qty } },
-      });
-      if (updated.count === 0) {
-        throw new Error(`Insufficient stock for ${item.name}`);
+      const product = await tx.product.findUnique({ where: { id: item.productId } });
+      if (!product) {
+        throw new Error(`Product not found: ${item.productId}`);
+      }
+
+      if (product.sizes?.length && item.size) {
+        const sizeStock = { ...(product.sizeStock || {}) };
+        const current = Number(sizeStock[item.size]) || 0;
+        if (current < item.qty) {
+          throw new Error(`Insufficient stock for ${item.name} (size ${item.size})`);
+        }
+        sizeStock[item.size] = current - item.qty;
+        const newTotal = product.sizes.reduce(
+          (sum, size) => sum + (Number(sizeStock[size]) || 0),
+          0
+        );
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { sizeStock, stock: newTotal },
+        });
+      } else {
+        const updated = await tx.product.updateMany({
+          where: { id: item.productId, stock: { gte: item.qty } },
+          data: { stock: { decrement: item.qty } },
+        });
+        if (updated.count === 0) {
+          throw new Error(`Insufficient stock for ${item.name}`);
+        }
       }
     }
 

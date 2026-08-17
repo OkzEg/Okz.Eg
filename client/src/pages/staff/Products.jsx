@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { FolderOpen, Loader2, Minus, Plus, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
-import { PRODUCT_TYPES, formatMoney, getImageUrl } from '../../utils/helpers';
+import { PRODUCT_TYPES, formatMoney, getImageUrl, parseSizes } from '../../utils/helpers';
 
 const empty = {
   name: '',
@@ -15,8 +15,18 @@ const empty = {
   colors: '',
   sizes: '',
   stock: 0,
+  sizeStock: {},
   isSaleActive: false,
   salePrice: '',
+};
+
+const syncSizeStock = (sizesValue, currentSizeStock = {}) => {
+  const sizes = parseSizes(sizesValue);
+  const next = {};
+  sizes.forEach((size) => {
+    next[size] = currentSizeStock[size] ?? '0';
+  });
+  return next;
 };
 
 export default function StaffProducts() {
@@ -108,6 +118,12 @@ export default function StaffProducts() {
       colors: (p.colors || []).join(', '),
       sizes: (p.sizes || []).join(', '),
       stock: p.stock,
+      sizeStock: syncSizeStock(
+        (p.sizes || []).join(', '),
+        Object.fromEntries(
+          (p.sizes || []).map((size) => [size, String(p.sizeStock?.[size] ?? 0)])
+        )
+      ),
       isSaleActive: p.isSaleActive,
       salePrice: p.salePrice ?? '',
     });
@@ -141,6 +157,14 @@ export default function StaffProducts() {
       ...form.photos.split(/[\n,]/).map((s) => s.trim()).filter(Boolean),
       ...(form.driveFolder.trim() ? [form.driveFolder.trim()] : []),
     ];
+    const sizes = parseSizes(form.sizes);
+    const sizeStock = {};
+    sizes.forEach((size) => {
+      sizeStock[size] = Number(form.sizeStock[size]) || 0;
+    });
+    const stock = sizes.length
+      ? sizes.reduce((sum, size) => sum + (sizeStock[size] || 0), 0)
+      : Number(form.stock) || 0;
     const payload = {
       name: form.name,
       description: form.description,
@@ -148,8 +172,9 @@ export default function StaffProducts() {
       type: form.type,
       photos: links,
       colors: form.colors.split(',').map((s) => s.trim()).filter(Boolean),
-      sizes: form.sizes.split(',').map((s) => s.trim()).filter(Boolean),
-      stock: Number(form.stock) || 0,
+      sizes,
+      sizeStock,
+      stock,
       isSaleActive: Boolean(form.isSaleActive),
       salePrice: form.salePrice === '' ? null : Number(form.salePrice),
     };
@@ -178,6 +203,7 @@ export default function StaffProducts() {
     .map((s) => s.trim())
     .filter(Boolean)
     .slice(0, 8);
+  const parsedSizes = parseSizes(form.sizes);
 
   return (
     <>
@@ -318,14 +344,62 @@ export default function StaffProducts() {
               </select>
             </div>
             <div>
-              <label className="label">Stock</label>
+              <label className="label">Sizes (comma-separated)</label>
               <input
-                type="number"
                 className="input"
-                value={form.stock}
-                onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                value={form.sizes}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    sizes: e.target.value,
+                    sizeStock: syncSizeStock(e.target.value, current.sizeStock),
+                  }))
+                }
+                placeholder="40, 41, 42, 43, 44"
               />
             </div>
+
+            {parsedSizes.length > 0 ? (
+              <div className="md:col-span-2">
+                <label className="label">Stock per size</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {parsedSizes.map((size) => (
+                    <div key={size}>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-timber-500">
+                        Size {size}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="input mt-1"
+                        value={form.sizeStock[size] ?? '0'}
+                        onChange={(e) =>
+                          setForm((current) => ({
+                            ...current,
+                            sizeStock: {
+                              ...current.sizeStock,
+                              [size]: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="label">Stock</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="input"
+                  value={form.stock}
+                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                />
+              </div>
+            )}
+
             <div>
               <label className="label">Colors (comma-separated)</label>
               <input
@@ -333,15 +407,6 @@ export default function StaffProducts() {
                 value={form.colors}
                 onChange={(e) => setForm({ ...form, colors: e.target.value })}
                 placeholder="Wheat, Black, Brown"
-              />
-            </div>
-            <div>
-              <label className="label">Sizes (comma-separated)</label>
-              <input
-                className="input"
-                value={form.sizes}
-                onChange={(e) => setForm({ ...form, sizes: e.target.value })}
-                placeholder="40, 41, 42, 43, 44"
               />
             </div>
 

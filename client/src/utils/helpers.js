@@ -64,6 +64,19 @@ export const VODAFONE_CASH_NUMBER = import.meta.env.VITE_VODAFONE_CASH_NUMBER ||
 export const calcShipping = (subtotal) =>
   Number(subtotal) >= FREE_SHIPPING_MIN || Number(subtotal) === 0 ? 0 : SHIPPING_FEE;
 
+export const getAvailableStock = (product, size) => {
+  if (product?.sizes?.length && size) {
+    return Number(product.sizeStock?.[size]) || 0;
+  }
+  return Number(product?.stock) || 0;
+};
+
+export const parseSizes = (value) =>
+  String(value || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 export const orderStatusLabel = {
   pending: 'Pending',
   confirmed: 'Confirmed',

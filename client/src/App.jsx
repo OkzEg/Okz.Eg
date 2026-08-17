@@ -117,7 +117,7 @@ function StoreShell({ children }) {
     isStaffRoute;
 
   return (
-    <div className={`min-h-screen flex flex-col ${isComingSoon ? 'bg-white' : ''}`}>
+    <div className="min-h-screen flex flex-col">
       {!hideChrome && <StoreHeader />}
       <div className="flex-1">
         <Suspense fallback={<PageLoader />}>{children}</Suspense>

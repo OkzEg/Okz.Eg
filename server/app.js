@@ -19,8 +19,12 @@ const app = express();
 app.disable('x-powered-by');
 app.use(compression());
 app.use(cors());
-// Keep JSON small by default; uploads/base64 slides use a higher limit only on those routes
-app.use(express.json({ limit: '2mb' }));
+// Slide writes may include base64 image data; everything else stays on the smaller cap.
+app.use((req, res, next) => {
+  const slideWrite =
+    req.path.startsWith('/api/slides') && ['POST', 'PUT', 'PATCH'].includes(req.method);
+  express.json({ limit: slideWrite ? '8mb' : '2mb' })(req, res, next);
+});
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
 app.use('/api/auth', authRoutes);

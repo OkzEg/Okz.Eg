@@ -28,12 +28,20 @@ const listSlides = async (req, res) => {
 const createSlide = async (req, res) => {
   try {
     const { title, description, sortOrder, imageUrl, imageData } = req.body;
-    let cloudinaryUrl = imageUrl;
+    let cloudinaryUrl = imageUrl?.trim() || null;
 
-    if (imageData) {
+    if (req.file) {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({
+          message: 'Cloudinary is not configured. Add CLOUDINARY_* env vars or paste an image URL.',
+        });
+      }
+      const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      cloudinaryUrl = await uploadImage(dataUri, 'okz/slides');
+    } else if (imageData) {
       cloudinaryUrl = await uploadImage(imageData, 'okz/slides');
     } else if (!cloudinaryUrl) {
-      return res.status(400).json({ message: 'imageUrl or imageData required' });
+      return res.status(400).json({ message: 'Upload an image or paste an image URL' });
     }
 
     const slide = await prisma.slide.create({
@@ -54,14 +62,23 @@ const createSlide = async (req, res) => {
 const updateSlide = async (req, res) => {
   try {
     const data = { ...req.body };
-    if (data.imageData) {
+    if (req.file) {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({
+          message: 'Cloudinary is not configured. Add CLOUDINARY_* env vars or paste an image URL.',
+        });
+      }
+      const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      data.cloudinaryUrl = await uploadImage(dataUri, 'okz/slides');
+    } else if (data.imageData) {
       data.cloudinaryUrl = await uploadImage(data.imageData, 'okz/slides');
       delete data.imageData;
     }
     if (data.imageUrl) {
-      data.cloudinaryUrl = data.imageUrl;
+      data.cloudinaryUrl = data.imageUrl.trim();
       delete data.imageUrl;
     }
+    delete data.image;
     const slide = await prisma.slide.update({
       where: { id: req.params.id },
       data,

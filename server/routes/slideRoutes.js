@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const {
   listSlides,
   createSlide,
@@ -9,14 +10,15 @@ const {
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
 const router = express.Router();
-
-// Base64 slide uploads need a higher body limit than the global 2mb cap
-router.use(express.json({ limit: '8mb' }));
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
 
 router.get('/', listSlides);
 router.get('/cloudinary-status', protect, adminOnly, cloudinaryStatus);
-router.post('/', protect, adminOnly, createSlide);
-router.put('/:id', protect, adminOnly, updateSlide);
+router.post('/', protect, adminOnly, upload.single('image'), createSlide);
+router.put('/:id', protect, adminOnly, upload.single('image'), updateSlide);
 router.delete('/:id', protect, adminOnly, deleteSlide);
 
 module.exports = router;

@@ -4,50 +4,88 @@ import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
 import { getImageUrl } from '../../utils/helpers';
 
+const emptyForm = { title: '', description: '', imageUrl: '', sortOrder: 0 };
+
 export default function StaffSlides() {
   const [slides, setSlides] = useState([]);
   const [cloudOk, setCloudOk] = useState(false);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', imageUrl: '', sortOrder: 0 });
-  const [fileData, setFileData] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [file, setFile] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const load = () => {
     api.get('/slides').then((r) => setSlides(r.data));
     api.get('/slides/cloudinary-status').then((r) => setCloudOk(r.data.configured)).catch(() => {});
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const onFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setFileData(reader.result);
-    reader.readAsDataURL(file);
+    setFile(e.target.files?.[0] || null);
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setFile(null);
   };
 
   const create = async (e) => {
     e.preventDefault();
+    const imageUrl = form.imageUrl.trim();
+
+    if (!file && !imageUrl) {
+      toast.error('Upload an image or paste an image URL');
+      return;
+    }
+    if (file && !cloudOk) {
+      toast.error('Cloudinary is not configured on the server. Paste a hosted image URL instead.');
+      return;
+    }
+
+    setSaving(true);
     try {
-      await api.post('/slides', {
-        title: form.title,
-        description: form.description,
-        sortOrder: Number(form.sortOrder) || 0,
-        imageUrl: form.imageUrl || undefined,
-        imageData: fileData || undefined,
-      });
+      if (file) {
+        const payload = new FormData();
+        payload.append('title', form.title);
+        payload.append('description', form.description);
+        payload.append('sortOrder', String(Number(form.sortOrder) || 0));
+        payload.append('image', file);
+        await api.post('/slides', payload);
+      } else {
+        await api.post('/slides', {
+          title: form.title,
+          description: form.description,
+          sortOrder: Number(form.sortOrder) || 0,
+          imageUrl,
+        });
+      }
       toast.success('Slide added');
       setOpen(false);
-      setForm({ title: '', description: '', imageUrl: '', sortOrder: 0 });
-      setFileData(null);
+      resetForm();
       load();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed — set Cloudinary keys or paste an image URL');
+      const status = err.response?.status;
+      const message =
+        err.response?.data?.message ||
+        (status === 413
+          ? 'Image is too large. Try a smaller file or paste a hosted URL.'
+          : 'Failed to save slide');
+      toast.error(message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const remove = async (id) => {
-    await api.delete(`/slides/${id}`);
-    load();
+    try {
+      await api.delete(`/slides/${id}`);
+      toast.success('Slide deleted');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delete failed');
+    }
   };
 
   return (
@@ -58,11 +96,16 @@ export default function StaffSlides() {
           <p className="page-subtitle">
             Homepage hero images via Cloudinary
             {!cloudOk && (
-              <span className="text-amber-600"> — Cloudinary not configured; you can still paste a hosted image URL.</span>
+              <span className="text-amber-600">
+                {' '}
+                — Cloudinary not configured; paste a hosted image URL instead of uploading.
+              </span>
             )}
           </p>
         </div>
-        <button type="button" className="btn-wheat" onClick={() => setOpen(true)}>Add slide</button>
+        <button type="button" className="btn-wheat" onClick={() => setOpen(true)}>
+          Add slide
+        </button>
       </div>
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -80,29 +123,59 @@ export default function StaffSlides() {
         ))}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="New slide">
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          resetForm();
+        }}
+        title="New slide"
+      >
         <form onSubmit={create} className="space-y-4">
           <div>
             <label className="label">Title</label>
-            <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <input
+              className="input"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="New Arrival"
+            />
           </div>
           <div>
             <label className="label">Description</label>
-            <input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <input
+              className="input"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Shop the collection"
+            />
           </div>
           <div>
             <label className="label">Sort order</label>
-            <input type="number" className="input" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} />
+            <input
+              type="number"
+              className="input"
+              value={form.sortOrder}
+              onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
+            />
           </div>
           <div>
             <label className="label">Upload (Cloudinary)</label>
             <input type="file" accept="image/*" onChange={onFile} className="input" />
+            {file && <p className="mt-1 text-xs text-timber-500">{file.name}</p>}
           </div>
           <div>
             <label className="label">Or image URL</label>
-            <input className="input" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://…" />
+            <input
+              className="input"
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              placeholder="https://…"
+            />
           </div>
-          <button type="submit" className="btn-wheat w-full">Save slide</button>
+          <button type="submit" className="btn-wheat w-full" disabled={saving}>
+            {saving ? 'Saving…' : 'Save slide'}
+          </button>
         </form>
       </Modal>
     </>

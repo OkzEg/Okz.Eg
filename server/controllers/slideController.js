@@ -39,6 +39,11 @@ const createSlide = async (req, res) => {
       const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
       cloudinaryUrl = await uploadImage(dataUri, 'okz/slides');
     } else if (imageData) {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({
+          message: 'Cloudinary is not configured. Add CLOUDINARY_* env vars or paste an image URL.',
+        });
+      }
       cloudinaryUrl = await uploadImage(imageData, 'okz/slides');
     } else if (!cloudinaryUrl) {
       return res.status(400).json({ message: 'Upload an image or paste an image URL' });
@@ -47,21 +52,28 @@ const createSlide = async (req, res) => {
     const slide = await prisma.slide.create({
       data: {
         cloudinaryUrl,
-        title: title || 'New Arrival',
-        description: description || 'Shop the collection',
-        sortOrder: sortOrder ?? 0,
+        title: title?.trim() || 'New Arrival',
+        description: description?.trim() || 'Shop the collection',
+        sortOrder: Number(sortOrder) || 0,
       },
     });
     cache.invalidate('slides');
     res.status(201).json(slide);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('createSlide failed:', error);
+    res.status(500).json({ message: error.message || 'Failed to save slide' });
   }
 };
 
 const updateSlide = async (req, res) => {
   try {
-    const data = { ...req.body };
+    const { title, description, sortOrder, imageUrl, imageData } = req.body;
+    const data = {};
+
+    if (title !== undefined) data.title = String(title).trim() || 'New Arrival';
+    if (description !== undefined) data.description = String(description).trim() || 'Shop the collection';
+    if (sortOrder !== undefined) data.sortOrder = Number(sortOrder) || 0;
+
     if (req.file) {
       if (!isCloudinaryConfigured()) {
         return res.status(503).json({
@@ -70,15 +82,17 @@ const updateSlide = async (req, res) => {
       }
       const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
       data.cloudinaryUrl = await uploadImage(dataUri, 'okz/slides');
-    } else if (data.imageData) {
-      data.cloudinaryUrl = await uploadImage(data.imageData, 'okz/slides');
-      delete data.imageData;
+    } else if (imageData) {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({
+          message: 'Cloudinary is not configured. Add CLOUDINARY_* env vars or paste an image URL.',
+        });
+      }
+      data.cloudinaryUrl = await uploadImage(imageData, 'okz/slides');
+    } else if (imageUrl) {
+      data.cloudinaryUrl = String(imageUrl).trim();
     }
-    if (data.imageUrl) {
-      data.cloudinaryUrl = data.imageUrl.trim();
-      delete data.imageUrl;
-    }
-    delete data.image;
+
     const slide = await prisma.slide.update({
       where: { id: req.params.id },
       data,
@@ -86,7 +100,8 @@ const updateSlide = async (req, res) => {
     cache.invalidate('slides');
     res.json(slide);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('updateSlide failed:', error);
+    res.status(500).json({ message: error.message || 'Failed to update slide' });
   }
 };
 

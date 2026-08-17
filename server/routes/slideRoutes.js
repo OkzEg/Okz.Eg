@@ -15,10 +15,19 @@ const upload = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
 });
 
+const handleUpload = (req, res, next) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ message: err.message || 'Invalid image upload' });
+    }
+    next();
+  });
+};
+
 router.get('/', listSlides);
 router.get('/cloudinary-status', protect, adminOnly, cloudinaryStatus);
-router.post('/', protect, adminOnly, upload.single('image'), createSlide);
-router.put('/:id', protect, adminOnly, upload.single('image'), updateSlide);
+router.post('/', protect, adminOnly, handleUpload, createSlide);
+router.put('/:id', protect, adminOnly, handleUpload, updateSlide);
 router.delete('/:id', protect, adminOnly, deleteSlide);
 
 module.exports = router;

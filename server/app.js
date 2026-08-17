@@ -19,8 +19,10 @@ const app = express();
 app.disable('x-powered-by');
 app.use(compression());
 app.use(cors());
-// Slide writes may include base64 image data; everything else stays on the smaller cap.
+// Slide writes may include base64 image data; skip JSON parsing for multipart uploads.
 app.use((req, res, next) => {
+  const isMultipart = String(req.headers['content-type'] || '').includes('multipart/form-data');
+  if (isMultipart) return next();
   const slideWrite =
     req.path.startsWith('/api/slides') && ['POST', 'PUT', 'PATCH'].includes(req.method);
   express.json({ limit: slideWrite ? '8mb' : '2mb' })(req, res, next);

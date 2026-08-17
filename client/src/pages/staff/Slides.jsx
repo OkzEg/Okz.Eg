@@ -6,6 +6,14 @@ import { getImageUrl } from '../../utils/helpers';
 
 const emptyForm = { title: '', description: '', imageUrl: '', sortOrder: 0 };
 
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read image file'));
+    reader.readAsDataURL(file);
+  });
+
 export default function StaffSlides() {
   const [slides, setSlides] = useState([]);
   const [cloudOk, setCloudOk] = useState(false);
@@ -43,24 +51,26 @@ export default function StaffSlides() {
       toast.error('Cloudinary is not configured on the server. Paste a hosted image URL instead.');
       return;
     }
+    if (file && file.size > 6 * 1024 * 1024) {
+      toast.error('Image is too large. Use a file under 6 MB or paste a hosted URL.');
+      return;
+    }
 
     setSaving(true);
     try {
+      const payload = {
+        title: form.title,
+        description: form.description,
+        sortOrder: Number(form.sortOrder) || 0,
+      };
+
       if (file) {
-        const payload = new FormData();
-        payload.append('title', form.title);
-        payload.append('description', form.description);
-        payload.append('sortOrder', String(Number(form.sortOrder) || 0));
-        payload.append('image', file);
-        await api.post('/slides', payload);
+        payload.imageData = await readFileAsDataUrl(file);
       } else {
-        await api.post('/slides', {
-          title: form.title,
-          description: form.description,
-          sortOrder: Number(form.sortOrder) || 0,
-          imageUrl,
-        });
+        payload.imageUrl = imageUrl;
       }
+
+      await api.post('/slides', payload);
       toast.success('Slide added');
       setOpen(false);
       resetForm();

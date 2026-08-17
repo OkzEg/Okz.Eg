@@ -28,7 +28,7 @@ export default function OrderPage() {
       <div className="card space-y-4">
         {order.items?.map((item) => (
           <div key={item.id} className="flex gap-3 items-center">
-            <img src={getImageUrl(item.image)} alt="" className="w-16 h-16 rounded-lg object-cover" />
+            <img src={getImageUrl(item.image)} alt="" className="w-16 h-16 rounded-lg object-contain object-center bg-timber-100" />
             <div className="flex-1">
               <p className="font-medium">{item.name}</p>
               <p className="text-sm text-timber-500">

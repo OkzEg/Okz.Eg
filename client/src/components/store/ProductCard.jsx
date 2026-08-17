@@ -36,12 +36,12 @@ export default function ProductCard({ product }) {
       to={`/product/${product.id}`}
       className="group flex flex-col overflow-hidden rounded-[16px] border border-timber-200/80 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:border-wheat-200 hover:shadow-[0_24px_50px_-30px_rgba(61,46,34,0.35)]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-timber-100">
+      <div className="relative aspect-square overflow-hidden bg-timber-100">
         {photos.length ? (
           <img
             src={getImageUrl(photos[photoIndex])}
             alt={product.name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-[1.03]"
             draggable={false}
           />
         ) : (

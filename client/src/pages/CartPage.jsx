@@ -48,7 +48,7 @@ export default function CartPage() {
                 <img
                   src={getImageUrl(item.image)}
                   alt=""
-                  className="w-20 h-20 rounded-lg object-cover bg-timber-100"
+                  className="w-20 h-20 rounded-lg object-contain object-center bg-timber-100"
                 />
               </Link>
               <div className="flex-1 min-w-0">

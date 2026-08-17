@@ -415,7 +415,7 @@ export default function ShopPage() {
                     key={i}
                     className="animate-pulse overflow-hidden rounded-[16px] border border-timber-100 bg-white"
                   >
-                    <div className="aspect-[4/3] bg-timber-100" />
+                    <div className="aspect-square bg-timber-100" />
                     <div className="space-y-2 p-3.5">
                       <div className="h-4 w-4/5 rounded bg-timber-100" />
                       <div className="h-3 w-2/5 rounded bg-timber-100" />

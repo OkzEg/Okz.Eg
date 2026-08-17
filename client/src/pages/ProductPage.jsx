@@ -190,12 +190,12 @@ export default function ProductPage() {
 
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
           <div className="space-y-3">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[16px] border border-timber-200/70 bg-timber-100 shadow-[0_18px_40px_-28px_rgba(61,46,34,0.45)]">
+            <div className="relative aspect-square overflow-hidden rounded-[16px] border border-timber-200/70 bg-timber-100 shadow-[0_18px_40px_-28px_rgba(61,46,34,0.45)]">
               {photos[activePhoto] ? (
                 <img
                   src={getImageUrl(photos[activePhoto])}
                   alt={product.name}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain object-center"
                 />
               ) : (
                 <div className="grid h-full place-items-center text-timber-400">No photo</div>
@@ -233,7 +233,7 @@ export default function ProductPage() {
                     <img
                       src={getImageUrl(p)}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain object-center bg-timber-50"
                     />
                   </button>
                 ))}

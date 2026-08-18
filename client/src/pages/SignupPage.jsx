@@ -4,14 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/AuthLayout';
-
-const ADDRESS_FIELDS = [
-  { key: 'street', label: 'Street address', autoComplete: 'street-address', span: true },
-  { key: 'city', label: 'City', autoComplete: 'address-level2' },
-  { key: 'state', label: 'Governorate', autoComplete: 'address-level1' },
-  { key: 'zip', label: 'Postal code', autoComplete: 'postal-code', inputMode: 'numeric' },
-  { key: 'country', label: 'Country', autoComplete: 'country-name' },
-];
+import AddressFields from '../components/store/AddressFields';
 
 export default function SignupPage() {
   const { register } = useAuth();
@@ -32,6 +25,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const setAddress = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const submit = async (e) => {
     e.preventDefault();
@@ -164,25 +158,12 @@ export default function SignupPage() {
           <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-timber-400">
             Delivery address
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {ADDRESS_FIELDS.map(({ key, label, autoComplete, inputMode, span }) => (
-              <div key={key} className={span ? 'sm:col-span-2' : ''}>
-                <label htmlFor={`signup-${key}`} className="label">
-                  {label}
-                </label>
-                <input
-                  id={`signup-${key}`}
-                  required
-                  autoComplete={autoComplete}
-                  inputMode={inputMode}
-                  enterKeyHint={key === 'country' ? 'done' : 'next'}
-                  className="auth-input"
-                  value={form[key]}
-                  onChange={set(key)}
-                />
-              </div>
-            ))}
-          </div>
+          <AddressFields
+            idPrefix="signup"
+            inputClass="auth-input"
+            values={form}
+            onChange={setAddress}
+          />
         </section>
 
         <div className="sticky bottom-0 -mx-5 border-t border-timber-100 bg-white/95 px-5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:pt-1 sm:backdrop-blur-none">

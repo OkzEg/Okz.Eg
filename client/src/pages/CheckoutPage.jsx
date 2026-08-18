@@ -5,6 +5,7 @@ import { Truck, ShieldCheck } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import AddressFields from '../components/store/AddressFields';
 import {
   formatMoney,
   getImageUrl,
@@ -14,14 +15,6 @@ import {
   INSTAPAY_HANDLE,
   VODAFONE_CASH_NUMBER,
 } from '../utils/helpers';
-
-const ADDRESS_FIELDS = [
-  { key: 'street', label: 'Street address', span: true },
-  { key: 'city', label: 'City' },
-  { key: 'state', label: 'Governorate' },
-  { key: 'zip', label: 'Postal code' },
-  { key: 'country', label: 'Country' },
-];
 
 export default function CheckoutPage() {
   const { user } = useAuth();
@@ -42,7 +35,7 @@ export default function CheckoutPage() {
     couponCode: '',
   });
   const [loading, setLoading] = useState(false);
-  const shipping = calcShipping(subtotal);
+    const shipping = calcShipping(subtotal, form.state);
   const total = subtotal + shipping;
 
   useEffect(() => {
@@ -53,12 +46,16 @@ export default function CheckoutPage() {
   }, [items.length, navigate, loading]);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+  const setAddress = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const submit = async (e) => {
     e.preventDefault();
     if (!items.length) return toast.error('Cart is empty');
     if (!form.name.trim() || !form.phone.trim()) {
       return toast.error('Name and phone are required');
+    }
+    if (!form.email.trim()) {
+      return toast.error('Email is required');
     }
 
     const shippingAddress = {
@@ -101,7 +98,7 @@ export default function CheckoutPage() {
           couponCode: form.couponCode || undefined,
           guestName: form.name.trim(),
           guestPhone: form.phone.trim(),
-          guestEmail: form.email.trim() || undefined,
+          guestEmail: form.email.trim(),
         }));
       }
 
@@ -145,8 +142,9 @@ export default function CheckoutPage() {
                 />
               </div>
               <div>
-                <label className="label">Email {user ? '' : '(optional)'}</label>
+                <label className="label">Email</label>
                 <input
+                  required
                   type="email"
                   className="input"
                   value={form.email}
@@ -161,19 +159,11 @@ export default function CheckoutPage() {
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-timber-700">
               Shipping address
             </h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {ADDRESS_FIELDS.map(({ key, label, span }) => (
-                <div key={key} className={span ? 'md:col-span-2' : ''}>
-                  <label className="label">{label}</label>
-                  <input
-                    required={key === 'street' || key === 'city' || key === 'country'}
-                    className="input"
-                    value={form[key]}
-                    onChange={set(key)}
-                  />
-                </div>
-              ))}
-            </div>
+            <AddressFields
+              idPrefix="checkout"
+              values={form}
+              onChange={setAddress}
+            />
           </div>
 
           <div className="card space-y-4">
@@ -287,13 +277,19 @@ export default function CheckoutPage() {
                 <span>Subtotal</span>
                 <span>{formatMoney(subtotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Shipping</span>
-                <span>
-                  {shipping === 0
-                    ? 'Free'
-                    : `${formatMoney(shipping)} · free over ${formatMoney(FREE_SHIPPING_MIN)}`}
-                </span>
+              <div>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>{shipping === 0 ? 'Free' : formatMoney(shipping)}</span>
+                </div>
+                <p className="mt-1 text-xs text-timber-400">
+                  {form.state === 'Cairo' || form.state === 'Giza'
+                    ? 'Cairo & Giza EGP 80'
+                    : form.state
+                      ? 'Other governorates EGP 110'
+                      : 'Cairo & Giza EGP 80 · other governorates EGP 110'}
+                  {` · free over ${formatMoney(FREE_SHIPPING_MIN)}`}
+                </p>
               </div>
               <div className="flex justify-between font-bold text-lg border-t border-timber-100 pt-3">
                 <span>Total</span>

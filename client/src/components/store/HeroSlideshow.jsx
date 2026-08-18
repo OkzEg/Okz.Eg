@@ -1,64 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import {
-  getSlideAspectRatio,
-  optimizeImageUrl,
-  preloadImage,
-} from '../../utils/helpers';
+import { getSlideAspectRatio, optimizeImageUrl } from '../../utils/helpers';
 
-const HERO_WIDTH = 1600;
 const SLIDE_MS = 5500;
+const SWIPE_PX = 40;
 
-const slideSrc = (slide) => optimizeImageUrl(slide?.cloudinaryUrl, { width: HERO_WIDTH });
+const srcFor = (slide, width) => optimizeImageUrl(slide?.cloudinaryUrl, { width });
 
 export default function HeroSlideshow() {
   const [slides, setSlides] = useState([]);
   const [index, setIndex] = useState(0);
-  const [readyIds, setReadyIds] = useState(() => new Set());
   const [ratios, setRatios] = useState({});
-  const preloaded = useRef(new Set());
+  const touchStartX = useRef(null);
+  const pauseUntil = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
-
     api
       .get('/slides')
       .then((r) => {
-        if (cancelled) return;
-        const list = Array.isArray(r.data) ? r.data : [];
-        setSlides(list);
-
-        list.forEach((slide, i) => {
-          const src = slideSrc(slide);
-          if (!src || preloaded.current.has(src)) return;
-          preloaded.current.add(src);
-
-          preloadImage(src)
-            .then((img) => {
-              if (cancelled || !img) return;
-              setReadyIds((prev) => new Set(prev).add(slide.id));
-              setRatios((prev) => ({
-                ...prev,
-                [slide.id]:
-                  getSlideAspectRatio(slide) ||
-                  img.naturalWidth / img.naturalHeight ||
-                  16 / 9,
-              }));
-            })
-            .catch(() => {});
-
-          if (i === 0) {
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'image';
-            link.href = src;
-            document.head.appendChild(link);
-          }
-        });
+        if (!cancelled) setSlides(Array.isArray(r.data) ? r.data : []);
       })
       .catch(() => {});
-
     return () => {
       cancelled = true;
     };
@@ -66,7 +30,10 @@ export default function HeroSlideshow() {
 
   useEffect(() => {
     if (slides.length < 2) return undefined;
-    const t = setInterval(() => setIndex((i) => (i + 1) % slides.length), SLIDE_MS);
+    const t = setInterval(() => {
+      if (Date.now() < pauseUntil.current) return;
+      setIndex((i) => (i + 1) % slides.length);
+    }, SLIDE_MS);
     return () => clearInterval(t);
   }, [slides.length]);
 
@@ -80,24 +47,39 @@ export default function HeroSlideshow() {
     ? getSlideAspectRatio(slide) || ratios[slide.id] || placeholderRatio
     : placeholderRatio;
 
+  const go = (next) => {
+    if (slides.length < 2) return;
+    pauseUntil.current = Date.now() + SLIDE_MS;
+    setIndex((i) => (next + slides.length) % slides.length);
+  };
+
   const onImageLoad = (s, e) => {
-    setReadyIds((prev) => new Set(prev).add(s.id));
-    if (!getSlideAspectRatio(s)) {
-      const { naturalWidth, naturalHeight } = e.currentTarget;
-      if (naturalWidth > 0 && naturalHeight > 0) {
-        setRatios((prev) => ({
-          ...prev,
-          [s.id]: naturalWidth / naturalHeight,
-        }));
-      }
+    if (getSlideAspectRatio(s)) return;
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      setRatios((prev) => ({ ...prev, [s.id]: naturalWidth / naturalHeight }));
     }
+  };
+
+  const onTouchStart = (e) => {
+    touchStartX.current = e.changedTouches[0].clientX;
+  };
+
+  const onTouchEnd = (e) => {
+    if (touchStartX.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < SWIPE_PX) return;
+    go(index + (dx < 0 ? 1 : -1));
   };
 
   return (
     <section className="relative w-full overflow-hidden bg-timber-800">
       <div
-        className="relative mx-auto w-full max-h-[85svh] transition-[aspect-ratio] duration-500 ease-out"
+        className="relative mx-auto w-full min-h-[62svh] max-h-[85svh] sm:min-h-0"
         style={{ aspectRatio: currentRatio }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
       >
         {!slides.length && (
           <div className="absolute inset-0 animate-pulse bg-timber-700" aria-hidden />
@@ -105,70 +87,70 @@ export default function HeroSlideshow() {
 
         {slides.map((s, i) => {
           const active = i === index;
-          const src = slideSrc(s);
-          const isReady = readyIds.has(s.id);
-
+          const src = srcFor(s, 1200);
           return (
             <img
               key={s.id}
               src={src}
+              srcSet={`${srcFor(s, 800)} 800w, ${srcFor(s, 1200)} 1200w, ${srcFor(s, 1600)} 1600w`}
+              sizes="100vw"
               alt={s.title}
               width={s.width || undefined}
               height={s.height || undefined}
               fetchPriority={i === 0 ? 'high' : 'low'}
-              loading={i === 0 ? 'eager' : 'lazy'}
               decoding="async"
+              draggable={false}
               onLoad={(e) => onImageLoad(s, e)}
-              className={`absolute inset-0 mx-auto block h-full w-full object-contain transition-opacity duration-700 ${
-                active && isReady ? 'opacity-70' : 'opacity-0'
+              className={`absolute inset-0 mx-auto block h-full w-full object-cover md:object-contain transition-opacity duration-500 ${
+                active ? 'opacity-80 md:opacity-70' : 'opacity-0'
               }`}
             />
           );
         })}
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-timber-800/95 via-timber-700/55 to-timber-800/20" />
-      </div>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-timber-900/90 via-timber-800/45 to-timber-800/20 md:bg-gradient-to-r md:from-timber-800/95 md:via-timber-700/55 md:to-timber-800/20" />
 
-      <div className="pointer-events-none absolute inset-0 flex items-end sm:items-center">
-        <div className="pointer-events-auto relative mx-auto w-full max-w-7xl px-5 pb-10 pt-28 sm:px-8 sm:pb-16 sm:pt-32">
-          <div className="max-w-xl text-white">
-            <h1 className="font-display text-5xl leading-[0.95] tracking-wide sm:text-7xl">
-              {slide?.title || 'Built for the long haul.'}
-            </h1>
-            <p className="mt-4 max-w-md text-balance text-base text-timber-200 sm:mt-5 sm:text-lg">
-              {slide?.description ||
-                'Premium boots, belts, and gear from OKZ — ready for work and weekend.'}
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3 sm:mt-8">
-              <Link to="/shop" className="btn-wheat btn-lg">
-                Shop collection
-              </Link>
-              <Link
-                to="/shop?type=shoe"
-                className="btn-outline btn-lg border-white/30 text-white hover:bg-white/10"
-              >
-                Explore boots
-              </Link>
+        <div className="absolute inset-0 flex items-end md:items-center">
+          <div className="relative mx-auto w-full max-w-7xl px-5 pb-14 pt-24 sm:px-8 sm:pb-16 md:pt-32">
+            <div className="max-w-xl text-white">
+              <h1 className="font-display text-4xl leading-[0.95] tracking-wide sm:text-6xl md:text-7xl">
+                {slide?.title || 'Built for the long haul.'}
+              </h1>
+              <p className="mt-3 max-w-md text-balance text-sm text-timber-200 sm:mt-5 sm:text-lg">
+                {slide?.description ||
+                  'Premium boots, belts, and gear from OKZ — ready for work and weekend.'}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3 sm:mt-8">
+                <Link to="/shop" className="btn-wheat btn-lg">
+                  Shop collection
+                </Link>
+                <Link
+                  to="/shop?type=shoe"
+                  className="btn-outline btn-lg border-white/30 text-white hover:bg-white/10"
+                >
+                  Explore boots
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {slides.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2 sm:bottom-6">
-          {slides.map((s, i) => (
-            <button
-              key={s.id}
-              type="button"
-              aria-label={`Slide ${i + 1}`}
-              onClick={() => setIndex(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === index ? 'w-8 bg-wheat' : 'w-2 bg-white/40'
-              }`}
-            />
-          ))}
-        </div>
-      )}
+        {slides.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2 sm:bottom-6">
+            {slides.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                aria-label={`Slide ${i + 1}`}
+                onClick={() => go(i)}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === index ? 'w-8 bg-wheat' : 'w-2 bg-white/40'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

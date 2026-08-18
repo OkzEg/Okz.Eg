@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Heart } from 'lucide-react';
-import { optimizeImageUrl, formatMoney, PRODUCT_TYPES } from '../../utils/helpers';
+import { ChevronLeft, ChevronRight, Heart, ShoppingCart } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { optimizeImageUrl, formatMoney, PRODUCT_TYPES, getAvailableStock } from '../../utils/helpers';
 import { useWishlist } from '../../context/WishlistContext';
+import { useCart } from '../../context/CartContext';
 
 export default function ProductCard({ product }) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const { isSaved, toggle } = useWishlist();
+  const { addItem } = useCart();
   const liked = isSaved(product.id);
   const photos = (product.photos || []).filter(Boolean);
   const price =
@@ -16,6 +19,44 @@ export default function ProductCard({ product }) {
     product.type.replace('_', ' ');
   const colorLabel =
     product.colors?.length > 0 ? product.colors.slice(0, 2).join(' · ') : 'Standard';
+  const defaultSize = product.sizes?.length
+    ? product.sizes.find((s) => getAvailableStock(product, s) > 0)
+    : null;
+  const canAdd = product.sizes?.length
+    ? Boolean(defaultSize)
+    : (Number(product.stock) || 0) >= 1;
+
+  const prev = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!photos.length) return;
+    setPhotoIndex((i) => (i - 1 + photos.length) % photos.length);
+  };
+
+  const next = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!photos.length) return;
+    setPhotoIndex((i) => (i + 1) % photos.length);
+  };
+
+  const addToCart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!canAdd) return toast.error('Out of stock');
+    const size = defaultSize || null;
+    const color = product.colors?.[0] || null;
+    const stock = getAvailableStock(product, size);
+    addItem({ ...product, stock }, 1, color, size);
+    toast.success(
+      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span>{size ? `Added size ${size}` : 'Added to cart'}</span>
+        <Link to="/cart" className="font-semibold underline underline-offset-2">
+          View cart
+        </Link>
+      </span>
+    );
+  };
 
   const prev = (e) => {
     e.preventDefault();
@@ -128,15 +169,27 @@ export default function ProductCard({ product }) {
               : 'In stock'}
         </p>
 
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-[19px] font-semibold tabular-nums text-timber-800">
-            {formatMoney(price)}
-          </span>
-          {product.isSaleActive && product.salePrice != null && (
-            <span className="text-[12.5px] text-timber-400 line-through">
-              {formatMoney(product.price)}
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="text-[19px] font-semibold tabular-nums text-timber-800">
+              {formatMoney(price)}
             </span>
-          )}
+            {product.isSaleActive && product.salePrice != null && (
+              <span className="text-[12.5px] text-timber-400 line-through">
+                {formatMoney(product.price)}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={!canAdd}
+            onClick={addToCart}
+            aria-label="Add to cart"
+            title={canAdd ? 'Add to cart' : 'Out of stock'}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-timber-800 text-wheat shadow-sm transition hover:bg-timber-700 hover:scale-105 disabled:cursor-not-allowed disabled:bg-timber-200 disabled:text-timber-400 disabled:hover:scale-100"
+          >
+            <ShoppingCart className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </Link>

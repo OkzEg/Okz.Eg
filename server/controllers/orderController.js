@@ -2,8 +2,9 @@ const prisma = require('../lib/prisma');
 const cache = require('../lib/cache');
 const { getAvailableStock } = require('./productController');
 
-const FREE_SHIPPING_MIN = 2000;
-const SHIPPING_FEE = 75;
+const FREE_SHIPPING_MIN = 3000;
+const SHIPPING_FEE_CAIRO_GIZA = 80;
+const SHIPPING_FEE_OTHER = 110;
 
 const effectivePrice = (product) => {
   if (product.isSaleActive && product.salePrice != null) {
@@ -12,7 +13,34 @@ const effectivePrice = (product) => {
   return Number(product.price);
 };
 
-const normalizePhone = (phone) => String(phone || '').replace(/\s+/g, '').trim();
+const requireShippingAddress = (shippingAddress) => {
+  if (!shippingAddress) {
+    const err = new Error('Payment method and shipping address required');
+    err.status = 400;
+    throw err;
+  }
+  if (!String(shippingAddress.street || '').trim() || !String(shippingAddress.city || '').trim()) {
+    const err = new Error('Street and city are required');
+    err.status = 400;
+    throw err;
+  }
+  if (!String(shippingAddress.state || '').trim()) {
+    const err = new Error('Governorate is required');
+    err.status = 400;
+    throw err;
+  }
+};
+
+const shippingFeeForGovernorate = (governorate) => {
+  const value = String(governorate || '').trim().toLowerCase();
+  if (value === 'cairo' || value === 'giza') return SHIPPING_FEE_CAIRO_GIZA;
+  return SHIPPING_FEE_OTHER;
+};
+
+const calcShipping = (itemsPrice, governorate) => {
+  if (Number(itemsPrice) >= FREE_SHIPPING_MIN) return 0;
+  return shippingFeeForGovernorate(governorate);
+};
 
 const buildOrderItems = async (orderItems) => {
   if (!orderItems?.length) {
@@ -179,13 +207,18 @@ const createOrder = async (req, res) => {
     if (!paymentMethod || !shippingAddress) {
       return res.status(400).json({ message: 'Payment method and shipping address required' });
     }
+    try {
+      requireShippingAddress(shippingAddress);
+    } catch (err) {
+      return res.status(err.status).json({ message: err.message });
+    }
 
     const { itemsPrice, itemsData } = await buildOrderItems(orderItems);
     const { discountAmount, couponId, savedCouponCode } = await resolveCoupon(
       couponCode,
       itemsPrice
     );
-    const shippingPrice = itemsPrice >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
+    const shippingPrice = calcShipping(itemsPrice, shippingAddress.state);
     const totalPrice = Math.max(0, itemsPrice + shippingPrice - discountAmount);
 
     const order = await persistOrder({
@@ -225,16 +258,21 @@ const createGuestOrder = async (req, res) => {
 
     const name = String(guestName || '').trim();
     const phone = normalizePhone(guestPhone);
-    const email = guestEmail ? String(guestEmail).trim().toLowerCase() : null;
+    const email = guestEmail ? String(guestEmail).trim().toLowerCase() : '';
 
     if (!name || !phone) {
       return res.status(400).json({ message: 'Name and phone are required' });
     }
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
     if (!paymentMethod || !shippingAddress) {
       return res.status(400).json({ message: 'Payment method and shipping address required' });
     }
-    if (!shippingAddress.street || !shippingAddress.city) {
-      return res.status(400).json({ message: 'Street and city are required' });
+    try {
+      requireShippingAddress(shippingAddress);
+    } catch (err) {
+      return res.status(err.status).json({ message: err.message });
     }
 
     const { itemsPrice, itemsData } = await buildOrderItems(orderItems);
@@ -242,7 +280,7 @@ const createGuestOrder = async (req, res) => {
       couponCode,
       itemsPrice
     );
-    const shippingPrice = itemsPrice >= FREE_SHIPPING_MIN ? 0 : SHIPPING_FEE;
+    const shippingPrice = calcShipping(itemsPrice, shippingAddress.state);
     const totalPrice = Math.max(0, itemsPrice + shippingPrice - discountAmount);
 
     const order = await persistOrder({

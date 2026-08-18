@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   ChevronDown,
@@ -8,6 +8,7 @@ import {
   Plus,
   RefreshCw,
   ShieldCheck,
+  ShoppingCart,
   Truck,
 } from 'lucide-react';
 import api from '../api/axios';
@@ -104,6 +105,7 @@ function TrustRow() {
 
 export default function ProductPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { addItem } = useCart();
   const { isSaved, toggle } = useWishlist();
   const [product, setProduct] = useState(null);
@@ -156,11 +158,15 @@ export default function ProductPage() {
   const liked = isSaved(product.id);
   const canAdd = availableStock >= 1;
 
-  const add = () => {
+  const add = (goCheckout = false) => {
     if (availableStock < 1) return toast.error('Out of stock');
     if (product.colors?.length && !color) return toast.error('Select a color');
     if (product.sizes?.length && !size) return toast.error('Select a size');
     addItem({ ...product, stock: availableStock }, qty, color || null, size || null);
+    if (goCheckout) {
+      navigate('/checkout');
+      return;
+    }
     toast.success(
       <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
         <span>Added to cart</span>
@@ -373,14 +379,25 @@ export default function ProductPage() {
               <p className="mt-4 text-sm text-timber-500">In stock</p>
             )}
 
-            <button
-              type="button"
-              className="btn-wheat mt-6 hidden w-full py-3.5 text-sm font-bold uppercase tracking-[0.14em] lg:inline-flex"
-              onClick={add}
-              disabled={!canAdd}
-            >
-              Add to cart
-            </button>
+            <div className="mt-6 hidden gap-3 lg:flex">
+              <button
+                type="button"
+                className="btn-outline flex-1 py-3.5 text-sm font-bold uppercase tracking-[0.14em]"
+                onClick={() => add(false)}
+                disabled={!canAdd}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Add to cart
+              </button>
+              <button
+                type="button"
+                className="btn-wheat flex-1 py-3.5 text-sm font-bold uppercase tracking-[0.14em]"
+                onClick={() => add(true)}
+                disabled={!canAdd}
+              >
+                Buy now
+              </button>
+            </div>
 
             <TrustRow />
 
@@ -481,18 +498,28 @@ export default function ProductPage() {
 
       {/* Mobile sticky ATC */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-timber-200 bg-cream/95 px-4 py-3 backdrop-blur-md lg:hidden">
-        <div className="mx-auto flex max-w-7xl items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-2">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-timber-900">{product.name}</p>
             <p className="text-sm tabular-nums text-timber-600">{formatMoney(price)}</p>
           </div>
           <button
             type="button"
-            className="btn-wheat shrink-0 px-5 py-3 text-sm font-bold uppercase tracking-[0.12em]"
-            onClick={add}
+            className="btn-outline shrink-0 px-3 py-3 text-xs font-bold uppercase tracking-[0.12em]"
+            onClick={() => add(false)}
+            disabled={!canAdd}
+            aria-label="Add to cart"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Cart
+          </button>
+          <button
+            type="button"
+            className="btn-wheat shrink-0 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em]"
+            onClick={() => add(true)}
             disabled={!canAdd}
           >
-            Add to cart
+            Buy now
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Truck, ShieldCheck, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import {
   formatMoney,
   getImageUrl,
@@ -11,8 +12,10 @@ import EmptyState from '../components/ui/EmptyState';
 
 export default function CartPage() {
   const { items, updateQty, removeItem, subtotal } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const shipping = calcShipping(subtotal);
+  const governorate = user?.address?.state;
+  const shipping = calcShipping(subtotal, governorate);
   const remaining = Math.max(0, FREE_SHIPPING_MIN - subtotal);
   const progress = Math.min(100, (subtotal / FREE_SHIPPING_MIN) * 100);
 
@@ -129,6 +132,10 @@ export default function CartPage() {
             <span>Shipping</span>
             <span>{shipping === 0 ? 'Free' : formatMoney(shipping)}</span>
           </div>
+          <p className="text-xs text-timber-400 -mt-2">
+            Cairo & Giza EGP 80 · other governorates EGP 110 · free over{' '}
+            {formatMoney(FREE_SHIPPING_MIN)}
+          </p>
           <div className="flex justify-between font-bold text-lg border-t border-timber-100 pt-3">
             <span>Total</span>
             <span>{formatMoney(subtotal + shipping)}</span>

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { formatMoney, orderStatusBadge, orderStatusLabel } from '../utils/helpers';
+import AddressFields from '../components/store/AddressFields';
 
 export default function AccountPage() {
   const { user, updateUser } = useAuth();
@@ -54,18 +55,51 @@ export default function AccountPage() {
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
       <h1 className="font-display text-5xl tracking-wide">Account</h1>
       <form onSubmit={save} className="card grid md:grid-cols-2 gap-4">
-        {['name', 'email', 'phone', 'password', 'street', 'city', 'state', 'zip', 'country'].map((f) => (
-          <div key={f} className={['street', 'password'].includes(f) ? 'md:col-span-2' : ''}>
-            <label className="label capitalize">{f === 'password' ? 'New password (optional)' : f}</label>
-            <input
-              type={f === 'password' ? 'password' : f === 'email' ? 'email' : 'text'}
-              className="input"
-              value={form[f]}
-              onChange={(e) => setForm({ ...form, [f]: e.target.value })}
-              required={f !== 'password'}
-            />
-          </div>
-        ))}
+        <div>
+          <label className="label">Name</label>
+          <input
+            required
+            className="input"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="label">Email</label>
+          <input
+            required
+            type="email"
+            className="input"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="label">Phone</label>
+          <input
+            required
+            type="tel"
+            className="input"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="label">New password (optional)</label>
+          <input
+            type="password"
+            className="input"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <AddressFields
+            idPrefix="account"
+            values={form}
+            onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))}
+          />
+        </div>
         <div className="md:col-span-2">
           <button type="submit" className="btn-wheat">Save changes</button>
         </div>

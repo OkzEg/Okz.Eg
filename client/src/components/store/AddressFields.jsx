@@ -1,0 +1,96 @@
+import { EGYPT_GOVERNORATES } from '../../utils/helpers';
+
+export default function AddressFields({
+  values,
+  onChange,
+  inputClass = 'input',
+  idPrefix = 'addr',
+}) {
+  const field = (key) => (e) => onChange(key, e.target.value);
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <label htmlFor={`${idPrefix}-street`} className="label">
+          Street address
+        </label>
+        <input
+          id={`${idPrefix}-street`}
+          required
+          autoComplete="street-address"
+          className={inputClass}
+          value={values.street || ''}
+          onChange={field('street')}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-city`} className="label">
+          City
+        </label>
+        <input
+          id={`${idPrefix}-city`}
+          required
+          autoComplete="address-level2"
+          className={inputClass}
+          value={values.city || ''}
+          onChange={field('city')}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-state`} className="label">
+          Governorate
+        </label>
+        <select
+          id={`${idPrefix}-state`}
+          required
+          autoComplete="address-level1"
+          className={inputClass}
+          value={values.state || ''}
+          onChange={field('state')}
+        >
+          <option value="" disabled>
+            Select governorate
+          </option>
+          {values.state && !EGYPT_GOVERNORATES.includes(values.state) && (
+            <option value={values.state}>{values.state}</option>
+          )}
+          {EGYPT_GOVERNORATES.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-zip`} className="label">
+          Postal code <span className="font-normal text-timber-400">(optional)</span>
+        </label>
+        <input
+          id={`${idPrefix}-zip`}
+          autoComplete="postal-code"
+          inputMode="numeric"
+          className={inputClass}
+          value={values.zip || ''}
+          onChange={field('zip')}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-country`} className="label">
+          Country
+        </label>
+        <input
+          id={`${idPrefix}-country`}
+          required
+          autoComplete="country-name"
+          className={inputClass}
+          value={values.country || 'Egypt'}
+          onChange={field('country')}
+        />
+      </div>
+    </div>
+  );
+}

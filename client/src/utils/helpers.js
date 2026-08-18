@@ -67,8 +67,9 @@ export const formatMoney = (n) =>
     maximumFractionDigits: 0,
   }).format(Number(n) || 0);
 
-export const FREE_SHIPPING_MIN = 2000;
-export const SHIPPING_FEE = 75;
+export const FREE_SHIPPING_MIN = 3000;
+export const SHIPPING_FEE_CAIRO_GIZA = 80;
+export const SHIPPING_FEE_OTHER = 110;
 
 export const PAYMENT_METHODS = [
   {
@@ -91,8 +92,46 @@ export const PAYMENT_METHODS = [
 export const INSTAPAY_HANDLE = import.meta.env.VITE_INSTAPAY_HANDLE || '';
 export const VODAFONE_CASH_NUMBER = import.meta.env.VITE_VODAFONE_CASH_NUMBER || '';
 
-export const calcShipping = (subtotal) =>
-  Number(subtotal) >= FREE_SHIPPING_MIN || Number(subtotal) === 0 ? 0 : SHIPPING_FEE;
+export const shippingFeeForGovernorate = (governorate) => {
+  const value = String(governorate || '').trim().toLowerCase();
+  if (value === 'cairo' || value === 'giza') return SHIPPING_FEE_CAIRO_GIZA;
+  return SHIPPING_FEE_OTHER;
+};
+
+export const calcShipping = (subtotal, governorate) => {
+  if (Number(subtotal) >= FREE_SHIPPING_MIN || Number(subtotal) === 0) return 0;
+  return shippingFeeForGovernorate(governorate);
+};
+
+export const EGYPT_GOVERNORATES = [
+  'Cairo',
+  'Giza',
+  'Alexandria',
+  'Dakahlia',
+  'Red Sea',
+  'Beheira',
+  'Fayoum',
+  'Gharbia',
+  'Ismailia',
+  'Menofia',
+  'Minya',
+  'Qalyubia',
+  'New Valley',
+  'Suez',
+  'Aswan',
+  'Assiut',
+  'Beni Suef',
+  'Port Said',
+  'Damietta',
+  'Sharqia',
+  'South Sinai',
+  'Kafr El Sheikh',
+  'Matrouh',
+  'Luxor',
+  'Qena',
+  'North Sinai',
+  'Sohag',
+];
 
 export const getAvailableStock = (product, size) => {
   if (product?.sizes?.length && size) {

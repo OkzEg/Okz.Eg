@@ -227,32 +227,57 @@ const updateProduct = async (req, res) => {
 
 const adjustStock = async (req, res) => {
   try {
-    const delta = Number(req.body.delta);
+    const delta = Math.trunc(Number(req.body.delta));
+    const size =
+      req.body.size != null && String(req.body.size).trim() !== ''
+        ? String(req.body.size).trim()
+        : '';
     if (!Number.isFinite(delta)) {
       return res.status(400).json({ message: 'delta must be a number' });
     }
 
-    const updated = await prisma.product.update({
-      where: { id: req.params.id },
-      data: { stock: { increment: delta } },
-      select: { id: true, stock: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, sizes: true, sizeStock: true, stock: true },
+      });
+      if (!product) return null;
+
+      if (size) {
+        if (product.sizes?.length && !product.sizes.includes(size)) {
+          const err = new Error(`Unknown size ${size}`);
+          err.status = 400;
+          throw err;
+        }
+        const sizeStock = normalizeSizeStock(product.sizeStock);
+        sizeStock[size] = Math.max(0, (Number(sizeStock[size]) || 0) + delta);
+        const stock = computeStock(product.sizes, sizeStock, product.stock);
+        return tx.product.update({
+          where: { id: product.id },
+          data: { sizeStock, stock },
+          select: { id: true, stock: true, sizeStock: true },
+        });
+      }
+
+      const stock = Math.max(0, (Number(product.stock) || 0) + delta);
+      return tx.product.update({
+        where: { id: product.id },
+        data: { stock },
+        select: { id: true, stock: true, sizeStock: true },
+      });
     });
 
-    if (updated.stock < 0) {
-      const fixed = await prisma.product.update({
-        where: { id: req.params.id },
-        data: { stock: 0 },
-        select: { id: true, stock: true },
-      });
-      bustProductCache();
-      res.set('Cache-Control', 'no-store');
-      return res.json(fixed);
+    if (!updated) {
+      return res.status(404).json({ message: 'Product not found' });
     }
 
     bustProductCache();
     res.set('Cache-Control', 'no-store');
     res.json(updated);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 };

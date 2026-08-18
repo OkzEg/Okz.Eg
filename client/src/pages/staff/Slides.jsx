@@ -21,9 +21,12 @@ export default function StaffSlides() {
   const [form, setForm] = useState(emptyForm);
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = () => {
-    api.get('/slides').then((r) => setSlides(r.data));
+    api
+      .get('/slides', { params: { _: Date.now() } })
+      .then((r) => setSlides(Array.isArray(r.data) ? r.data : []));
     api.get('/slides/cloudinary-status').then((r) => setCloudOk(r.data.configured)).catch(() => {});
   };
   useEffect(() => {
@@ -89,12 +92,18 @@ export default function StaffSlides() {
   };
 
   const remove = async (id) => {
+    if (!window.confirm('Delete this slide?')) return;
+    if (deletingId) return;
+    setDeletingId(id);
     try {
       await api.delete(`/slides/${id}`);
+      setSlides((prev) => prev.filter((s) => s.id !== id));
       toast.success('Slide deleted');
-      load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Delete failed');
+      load();
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -125,8 +134,13 @@ export default function StaffSlides() {
             <div className="p-4">
               <h3 className="font-semibold">{s.title}</h3>
               <p className="text-sm text-timber-500 mt-1">{s.description}</p>
-              <button type="button" className="btn-ghost btn-sm text-red-600 mt-3" onClick={() => remove(s.id)}>
-                Delete
+              <button
+                type="button"
+                className="btn-ghost btn-sm text-red-600 mt-3"
+                disabled={deletingId === s.id}
+                onClick={() => remove(s.id)}
+              >
+                {deletingId === s.id ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>

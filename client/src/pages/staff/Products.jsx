@@ -46,40 +46,82 @@ export default function StaffProducts() {
 
   const flushStock = async (id) => {
     const q = stockQueue.current[id];
-    if (!q || q.inFlight || q.pending === 0) return;
+    if (!q || q.inFlight) return;
+
+    const snapshot = Object.fromEntries(
+      Object.entries(q.pending).filter(([, delta]) => delta)
+    );
+    if (!Object.keys(snapshot).length) return;
 
     q.inFlight = true;
-    const delta = q.pending;
-    q.pending = 0;
+    Object.keys(snapshot).forEach((key) => {
+      q.pending[key] = 0;
+    });
 
     try {
-      const { data } = await api.patch(`/products/${id}/stock`, { delta });
-      // Re-apply any clicks made while this request was in flight so the
-      // counter never jumps backwards.
-      const stillPending = stockQueue.current[id]?.pending || 0;
+      let last = null;
+      for (const [sizeKey, delta] of Object.entries(snapshot)) {
+        const { data } = await api.patch(`/products/${id}/stock`, {
+          delta,
+          ...(sizeKey ? { size: sizeKey } : {}),
+        });
+        last = data;
+      }
+
+      const stillPending = stockQueue.current[id]?.pending || {};
       setProducts((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, stock: Math.max(0, data.stock + stillPending) } : p
-        )
+        prev.map((p) => {
+          if (p.id !== id || !last) return p;
+          const sizeStock = { ...(last.sizeStock || p.sizeStock || {}) };
+          let stock = Number(last.stock) || 0;
+          Object.entries(stillPending).forEach(([sizeKey, delta]) => {
+            if (!delta) return;
+            if (sizeKey) {
+              sizeStock[sizeKey] = Math.max(0, (Number(sizeStock[sizeKey]) || 0) + delta);
+            } else {
+              stock = Math.max(0, stock + delta);
+            }
+          });
+          if (p.sizes?.length) {
+            stock = p.sizes.reduce((sum, size) => sum + (Number(sizeStock[size]) || 0), 0);
+          }
+          return { ...p, stock, sizeStock };
+        })
       );
     } catch (err) {
       toast.error(err.response?.data?.message || 'Stock update failed');
-      if (stockQueue.current[id]) stockQueue.current[id].pending = 0;
+      if (stockQueue.current[id]) stockQueue.current[id].pending = {};
       await load();
     } finally {
       const queue = stockQueue.current[id];
       if (queue) {
         queue.inFlight = false;
-        if (queue.pending !== 0) flushStock(id);
+        if (Object.values(queue.pending).some(Boolean)) flushStock(id);
       }
     }
   };
 
-  const adjust = (id, delta) => {
+  const adjust = (id, delta, size) => {
+    const sizeKey = size || '';
     let applied = true;
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id !== id) return p;
+        if (sizeKey) {
+          const current = Number(p.sizeStock?.[sizeKey]) || 0;
+          if (delta < 0 && current <= 0) {
+            applied = false;
+            return p;
+          }
+          const sizeStock = {
+            ...(p.sizeStock || {}),
+            [sizeKey]: Math.max(0, current + delta),
+          };
+          const stock = p.sizes?.length
+            ? p.sizes.reduce((sum, s) => sum + (Number(sizeStock[s]) || 0), 0)
+            : Math.max(0, (Number(p.stock) || 0) + delta);
+          return { ...p, sizeStock, stock };
+        }
         if (delta < 0 && p.stock <= 0) {
           applied = false;
           return p;
@@ -90,12 +132,11 @@ export default function StaffProducts() {
     if (!applied) return;
 
     if (!stockQueue.current[id]) {
-      stockQueue.current[id] = { pending: 0, inFlight: false, timer: null };
+      stockQueue.current[id] = { pending: {}, inFlight: false, timer: null };
     }
     const queue = stockQueue.current[id];
-    queue.pending += delta;
+    queue.pending[sizeKey] = (queue.pending[sizeKey] || 0) + delta;
 
-    // Collapse a burst of clicks into a single request
     clearTimeout(queue.timer);
     queue.timer = setTimeout(() => flushStock(id), 400);
   };
@@ -246,26 +287,63 @@ export default function StaffProducts() {
                 </td>
                 <td className="capitalize">{p.type.replace('_', ' ')}</td>
                 <td>{formatMoney(p.price)}</td>
-                <td>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      className="btn-outline btn-sm !px-2"
-                      onClick={() => adjust(p.id, -1)}
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-8 text-center font-semibold tabular-nums">
-                      {p.stock}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-outline btn-sm !px-2"
-                      onClick={() => adjust(p.id, 1)}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
+                <td className="!whitespace-normal min-w-[16rem]">
+                  {p.sizes?.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {p.sizes.map((size) => {
+                        const qty = Number(p.sizeStock?.[size]) || 0;
+                        return (
+                          <div
+                            key={size}
+                            className="flex items-center gap-1 rounded-lg bg-timber-50 px-1.5 py-1"
+                          >
+                            <span className="min-w-[1.5rem] text-xs font-semibold text-timber-500">
+                              {size}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn-outline btn-sm !px-2"
+                              onClick={() => adjust(p.id, -1, size)}
+                              disabled={qty <= 0}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-6 text-center font-semibold tabular-nums">
+                              {qty}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn-outline btn-sm !px-2"
+                              onClick={() => adjust(p.id, 1, size)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="btn-outline btn-sm !px-2"
+                        onClick={() => adjust(p.id, -1)}
+                        disabled={p.stock <= 0}
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-8 text-center font-semibold tabular-nums">
+                        {p.stock}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-outline btn-sm !px-2"
+                        onClick={() => adjust(p.id, 1)}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td>{p.isSaleActive ? formatMoney(p.salePrice) : '—'}</td>
                 <td>

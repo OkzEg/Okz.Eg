@@ -4,21 +4,31 @@ const { uploadImage, isCloudinaryConfigured } = require('../utils/cloudinary');
 
 const SLIDES_TTL_MS = 60_000;
 
+const slideListQuery = () =>
+  prisma.slide.findMany({
+    orderBy: { sortOrder: 'asc' },
+    select: {
+      id: true,
+      cloudinaryUrl: true,
+      title: true,
+      description: true,
+      sortOrder: true,
+    },
+  });
+
 const listSlides = async (req, res) => {
   try {
-    const { data: slides } = await cache.wrap('slides:list', SLIDES_TTL_MS, () =>
-      prisma.slide.findMany({
-        orderBy: { sortOrder: 'asc' },
-        select: {
-          id: true,
-          cloudinaryUrl: true,
-          title: true,
-          description: true,
-          sortOrder: true,
-        },
-      })
+    const isAuthed = Boolean(req.headers.authorization);
+    const slides = isAuthed
+      ? await slideListQuery()
+      : (await cache.wrap('slides:list', SLIDES_TTL_MS, slideListQuery)).data;
+
+    res.set(
+      'Cache-Control',
+      isAuthed
+        ? 'private, no-store'
+        : 'public, max-age=60, stale-while-revalidate=120'
     );
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
     res.json(slides);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -107,11 +117,19 @@ const updateSlide = async (req, res) => {
 
 const deleteSlide = async (req, res) => {
   try {
-    await prisma.slide.delete({ where: { id: req.params.id } });
+    const id = String(req.params.id || '').trim();
+    if (!id) {
+      return res.status(400).json({ message: 'Slide id required' });
+    }
+
+    // deleteMany is idempotent: a missing row is not an error (Prisma delete throws P2025).
+    await prisma.slide.deleteMany({ where: { id } });
     cache.invalidate('slides');
+    res.set('Cache-Control', 'no-store');
     res.json({ message: 'Slide deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('deleteSlide failed:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete slide' });
   }
 };
 

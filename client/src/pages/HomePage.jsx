@@ -4,62 +4,103 @@ import api from '../api/axios';
 import HeroSlideshow from '../components/store/HeroSlideshow';
 import ProductCard from '../components/store/ProductCard';
 
+function ProductGrid({ products, loading }) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 md:gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="animate-pulse">
+            <div className="aspect-square rounded-xl bg-timber-100" />
+            <div className="mt-3 h-4 w-3/4 rounded bg-timber-100" />
+            <div className="mt-2 h-3 w-1/2 rounded bg-timber-50" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!products.length) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 md:gap-6">
+      {products.map((p) => (
+        <ProductCard key={p.id} product={p} />
+      ))}
+    </div>
+  );
+}
+
 export default function HomePage() {
-  const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [bestSellers, setBestSellers] = useState([]);
+  const [ourProducts, setOurProducts] = useState([]);
+  const [loadingBest, setLoadingBest] = useState(true);
+  const [loadingOurs, setLoadingOurs] = useState(true);
 
   useEffect(() => {
-    const loadProducts = () => {
+    const load = () => {
       api
-        .get('/products?limit=8')
-        .then((r) => setProducts(r.data))
-        .catch(() => setProducts([]))
-        .finally(() => setLoadingProducts(false));
+        .get('/products?collection=best-sellers&limit=8')
+        .then((r) => setBestSellers(Array.isArray(r.data) ? r.data : []))
+        .catch(() => setBestSellers([]))
+        .finally(() => setLoadingBest(false));
+      api
+        .get('/products?collection=our-products&limit=8')
+        .then((r) => setOurProducts(Array.isArray(r.data) ? r.data : []))
+        .catch(() => setOurProducts([]))
+        .finally(() => setLoadingOurs(false));
     };
 
     if ('requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(loadProducts, { timeout: 1200 });
+      const id = window.requestIdleCallback(load, { timeout: 1200 });
       return () => window.cancelIdleCallback(id);
     }
 
-    const t = setTimeout(loadProducts, 80);
+    const t = setTimeout(load, 80);
     return () => clearTimeout(t);
   }, []);
+
+  const showBest = loadingBest || bestSellers.length > 0;
+  const showOurs = loadingOurs || ourProducts.length > 0;
 
   return (
     <div>
       <HeroSlideshow />
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h2 className="font-display text-4xl text-timber-900 tracking-wide">Featured</h2>
-            <p className="text-timber-500 mt-1">Handpicked pieces from the floor</p>
+      {showBest && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <h2 className="font-display text-4xl text-timber-900 tracking-wide">Best sellers</h2>
+              <p className="text-timber-500 mt-1">The pieces customers keep coming back for</p>
+            </div>
+            <Link to="/shop" className="btn-outline btn-sm">
+              View all
+            </Link>
           </div>
-          <Link to="/shop" className="btn-outline btn-sm">
-            View all
-          </Link>
-        </div>
-        {loadingProducts ? (
-          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 md:gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-square rounded-xl bg-timber-100" />
-                <div className="mt-3 h-4 w-3/4 rounded bg-timber-100" />
-                <div className="mt-2 h-3 w-1/2 rounded bg-timber-50" />
-              </div>
-            ))}
+          <ProductGrid products={bestSellers} loading={loadingBest} />
+        </section>
+      )}
+
+      {showOurs && (
+        <section className={`max-w-7xl mx-auto px-4 sm:px-6 ${showBest ? 'pb-16' : 'py-16'}`}>
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <h2 className="font-display text-4xl text-timber-900 tracking-wide">Our products</h2>
+              <p className="text-timber-500 mt-1">Selected from the OKZ collection</p>
+            </div>
+            <Link to="/shop" className="btn-outline btn-sm">
+              Shop all
+            </Link>
           </div>
-        ) : products.length === 0 ? (
+          <ProductGrid products={ourProducts} loading={loadingOurs} />
+        </section>
+      )}
+
+      {!showBest && !showOurs && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
           <p className="text-timber-500 text-sm">No products yet — check back soon.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 md:gap-6">
-            {products.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="bg-timber-700 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid md:grid-cols-3 gap-8 text-center">

@@ -18,6 +18,11 @@ const empty = {
   sizeStock: {},
   isSaleActive: false,
   salePrice: '',
+  sortOrder: 0,
+  isBestSeller: false,
+  bestSellerOrder: 0,
+  isHomeProduct: false,
+  homeOrder: 0,
 };
 
 const syncSizeStock = (sizesValue, currentSizeStock = {}) => {
@@ -39,7 +44,16 @@ export default function StaffProducts() {
   // Batch stock deltas so rapid +/- taps stay instant and send one request
   const stockQueue = useRef({});
 
-  const load = () => api.get('/products').then((r) => setProducts(r.data));
+  const load = () =>
+    api.get('/products').then((r) => {
+      const rows = Array.isArray(r.data) ? r.data : [];
+      rows.sort(
+        (a, b) =>
+          (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0) ||
+          new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setProducts(rows);
+    });
   useEffect(() => {
     load();
   }, []);
@@ -167,6 +181,11 @@ export default function StaffProducts() {
       ),
       isSaleActive: p.isSaleActive,
       salePrice: p.salePrice ?? '',
+      sortOrder: p.sortOrder ?? 0,
+      isBestSeller: Boolean(p.isBestSeller),
+      bestSellerOrder: p.bestSellerOrder ?? 0,
+      isHomeProduct: Boolean(p.isHomeProduct),
+      homeOrder: p.homeOrder ?? 0,
     });
     setOpen(true);
   };
@@ -218,6 +237,11 @@ export default function StaffProducts() {
       stock,
       isSaleActive: Boolean(form.isSaleActive),
       salePrice: form.salePrice === '' ? null : Number(form.salePrice),
+      sortOrder: Number(form.sortOrder) || 0,
+      isBestSeller: Boolean(form.isBestSeller),
+      bestSellerOrder: Number(form.bestSellerOrder) || 0,
+      isHomeProduct: Boolean(form.isHomeProduct),
+      homeOrder: Number(form.homeOrder) || 0,
     };
     try {
       if (editing) await api.put(`/products/${editing.id}`, payload);
@@ -252,7 +276,7 @@ export default function StaffProducts() {
         <div>
           <h1 className="page-title">Products</h1>
           <p className="page-subtitle">
-            Manage catalog, stock, colors, and Drive photo folders
+            Manage catalog, homepage collections, and shop order
           </p>
         </div>
         <button type="button" className="btn-wheat" onClick={openCreate}>
@@ -268,6 +292,8 @@ export default function StaffProducts() {
               <th>Type</th>
               <th>Price</th>
               <th>Stock</th>
+              <th>Shop order</th>
+              <th>Home</th>
               <th>Sale</th>
               <th></th>
             </tr>
@@ -344,6 +370,22 @@ export default function StaffProducts() {
                       </button>
                     </div>
                   )}
+                </td>
+                <td className="tabular-nums">{p.sortOrder ?? 0}</td>
+                <td>
+                  <div className="flex flex-col gap-1 text-xs">
+                    {p.isBestSeller && (
+                      <span className="rounded-full bg-wheat/20 px-2 py-0.5 font-semibold text-timber-700">
+                        Best seller #{p.bestSellerOrder ?? 0}
+                      </span>
+                    )}
+                    {p.isHomeProduct && (
+                      <span className="rounded-full bg-timber-100 px-2 py-0.5 font-semibold text-timber-700">
+                        Our products #{p.homeOrder ?? 0}
+                      </span>
+                    )}
+                    {!p.isBestSeller && !p.isHomeProduct && '—'}
+                  </div>
                 </td>
                 <td>{p.isSaleActive ? formatMoney(p.salePrice) : '—'}</td>
                 <td>
@@ -539,6 +581,57 @@ export default function StaffProducts() {
                       className="h-14 w-14 rounded-lg object-cover border border-timber-100 bg-timber-50"
                     />
                   ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="label">Shop order</label>
+              <input
+                type="number"
+                className="input"
+                value={form.sortOrder}
+                onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
+              />
+              <p className="mt-1 text-xs text-timber-400">Lower numbers appear first in the shop.</p>
+            </div>
+            <div className="flex flex-col justify-end gap-3 rounded-xl border border-timber-100 bg-cream/40 p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.isBestSeller}
+                  onChange={(e) => setForm({ ...form, isBestSeller: e.target.checked })}
+                />
+                Show in Best sellers
+              </label>
+              {form.isBestSeller && (
+                <div>
+                  <label className="label">Best sellers order</label>
+                  <input
+                    type="number"
+                    className="input"
+                    value={form.bestSellerOrder}
+                    onChange={(e) => setForm({ ...form, bestSellerOrder: e.target.value })}
+                  />
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.isHomeProduct}
+                  onChange={(e) => setForm({ ...form, isHomeProduct: e.target.checked })}
+                />
+                Show in Our products
+              </label>
+              {form.isHomeProduct && (
+                <div>
+                  <label className="label">Our products order</label>
+                  <input
+                    type="number"
+                    className="input"
+                    value={form.homeOrder}
+                    onChange={(e) => setForm({ ...form, homeOrder: e.target.value })}
+                  />
                 </div>
               )}
             </div>

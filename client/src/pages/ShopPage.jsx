@@ -326,7 +326,11 @@ export default function ShopPage() {
         list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         break;
       default:
-        list.sort((a, b) => Number(b.isSaleActive) - Number(a.isSaleActive));
+        list.sort(
+          (a, b) =>
+            (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0) ||
+            new Date(b.createdAt) - new Date(a.createdAt)
+        );
     }
 
     return list;

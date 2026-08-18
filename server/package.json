@@ -4,7 +4,7 @@
   "description": "Backend for OKZ premium footwear shop",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "prisma db push && node index.js",
     "dev": "nodemon index.js",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",

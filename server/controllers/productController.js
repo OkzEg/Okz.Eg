@@ -46,6 +46,11 @@ const PRODUCT_SELECT = {
   stock: true,
   isSaleActive: true,
   salePrice: true,
+  sortOrder: true,
+  isBestSeller: true,
+  bestSellerOrder: true,
+  isHomeProduct: true,
+  homeOrder: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -58,26 +63,41 @@ const bustProductCache = () => {
   cache.invalidate('product');
 };
 
+const toInt = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+};
+
 const listProducts = async (req, res) => {
   try {
-    const { type, q, limit } = req.query;
+    const { type, q, limit, collection } = req.query;
     const take = Math.min(Number(limit) || 100, 100);
     const useCache = !req.headers.authorization;
-    const cacheKey = `products:${type || ''}:${q || ''}:${take}`;
+    const cacheKey = `products:${type || ''}:${q || ''}:${take}:${collection || ''}`;
 
     const load = async () => {
       const where = {};
       if (type) where.type = type;
+      if (collection === 'best-sellers') where.isBestSeller = true;
+      if (collection === 'our-products') where.isHomeProduct = true;
       if (q) {
         where.OR = [
           { name: { contains: q, mode: 'insensitive' } },
           { description: { contains: q, mode: 'insensitive' } },
         ];
       }
+
+      let orderBy = [{ sortOrder: 'asc' }, { createdAt: 'desc' }];
+      if (collection === 'best-sellers') {
+        orderBy = [{ bestSellerOrder: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'desc' }];
+      } else if (collection === 'our-products') {
+        orderBy = [{ homeOrder: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'desc' }];
+      }
+
       const rows = await prisma.product.findMany({
         where,
         select: PRODUCT_SELECT,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         take,
       });
       return rows.map(serializeProduct);
@@ -144,6 +164,11 @@ const createProduct = async (req, res) => {
       stock,
       isSaleActive,
       salePrice,
+      sortOrder,
+      isBestSeller,
+      bestSellerOrder,
+      isHomeProduct,
+      homeOrder,
     } = req.body;
     if (!name || !description || price == null || !type) {
       return res.status(400).json({ message: 'Name, description, price, and type are required' });
@@ -167,6 +192,11 @@ const createProduct = async (req, res) => {
         stock: totalStock,
         isSaleActive: Boolean(isSaleActive),
         salePrice: salePrice || null,
+        sortOrder: toInt(sortOrder, 0),
+        isBestSeller: Boolean(isBestSeller),
+        bestSellerOrder: toInt(bestSellerOrder, 0),
+        isHomeProduct: Boolean(isHomeProduct),
+        homeOrder: toInt(homeOrder, 0),
       },
       select: PRODUCT_SELECT,
     });
@@ -189,6 +219,11 @@ const ALLOWED_UPDATE = [
   'stock',
   'isSaleActive',
   'salePrice',
+  'sortOrder',
+  'isBestSeller',
+  'bestSellerOrder',
+  'isHomeProduct',
+  'homeOrder',
 ];
 
 const updateProduct = async (req, res) => {
@@ -197,6 +232,11 @@ const updateProduct = async (req, res) => {
     for (const key of ALLOWED_UPDATE) {
       if (req.body[key] !== undefined) data[key] = req.body[key];
     }
+    if (data.sortOrder !== undefined) data.sortOrder = toInt(data.sortOrder, 0);
+    if (data.bestSellerOrder !== undefined) data.bestSellerOrder = toInt(data.bestSellerOrder, 0);
+    if (data.homeOrder !== undefined) data.homeOrder = toInt(data.homeOrder, 0);
+    if (data.isBestSeller !== undefined) data.isBestSeller = Boolean(data.isBestSeller);
+    if (data.isHomeProduct !== undefined) data.isHomeProduct = Boolean(data.isHomeProduct);
     if (data.photos) {
       data.photos = await resolvePhotoLinks(data.photos);
     }

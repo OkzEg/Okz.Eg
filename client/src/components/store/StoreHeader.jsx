@@ -60,7 +60,7 @@ export default function StoreHeader() {
         }`}
       >
         <div className="bg-timber-800 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-cream px-4 py-2">
-          Free shipping over EGP 2,000 · COD · InstaPay · Vodafone Cash
+          Free shipping over EGP 3,000 · COD · InstaPay · Vodafone Cash
         </div>
         <div className="relative mx-auto flex h-[88px] sm:h-[96px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
           <div className="relative z-10 shrink-0">

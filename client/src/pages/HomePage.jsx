@@ -85,8 +85,8 @@ export default function HomePage() {
         <section className={`max-w-7xl mx-auto px-4 sm:px-6 ${showBest ? 'pb-16' : 'py-16'}`}>
           <div className="flex items-end justify-between mb-8">
             <div>
-              <h2 className="font-display text-4xl text-timber-900 tracking-wide">Our products</h2>
-              <p className="text-timber-500 mt-1">Selected from the OKZ collection</p>
+              <h2 className="font-display text-4xl text-timber-900 tracking-wide">New collection</h2>
+              <p className="text-timber-500 mt-1">Fresh pieces just added to the floor</p>
             </div>
             <Link to="/shop" className="btn-outline btn-sm">
               Shop all

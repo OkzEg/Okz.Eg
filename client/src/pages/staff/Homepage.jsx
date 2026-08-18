@@ -128,7 +128,7 @@ export default function StaffHomepage() {
       <div className="mb-6">
         <h1 className="page-title">Homepage</h1>
         <p className="page-subtitle">
-          Choose which products appear in Best sellers and Our products, and set shop order.
+          Choose which products appear in Best sellers and New collection, and set shop order.
         </p>
       </div>
 
@@ -151,7 +151,7 @@ export default function StaffHomepage() {
         />
 
         <CollectionList
-          title="Our products"
+          title="New collection"
           hint="Shown on the homepage in this order. Lower numbers first."
           products={products}
           selected={homeProducts}

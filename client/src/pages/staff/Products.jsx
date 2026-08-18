@@ -381,7 +381,7 @@ export default function StaffProducts() {
                     )}
                     {p.isHomeProduct && (
                       <span className="rounded-full bg-timber-100 px-2 py-0.5 font-semibold text-timber-700">
-                        Our products #{p.homeOrder ?? 0}
+                        New collection #{p.homeOrder ?? 0}
                       </span>
                     )}
                     {!p.isBestSeller && !p.isHomeProduct && '—'}
@@ -621,11 +621,11 @@ export default function StaffProducts() {
                   checked={form.isHomeProduct}
                   onChange={(e) => setForm({ ...form, isHomeProduct: e.target.checked })}
                 />
-                Show in Our products
+                Show in New collection
               </label>
               {form.isHomeProduct && (
                 <div>
-                  <label className="label">Our products order</label>
+                  <label className="label">New collection order</label>
                   <input
                     type="number"
                     className="input"

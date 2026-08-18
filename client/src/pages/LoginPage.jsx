@@ -5,10 +5,9 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { defaultStaffPage, isStaff } from '../utils/permissions';
 import AuthLayout from '../components/AuthLayout';
-import { COMING_SOON } from '../config';
 
 export default function LoginPage() {
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const redirect = params.get('redirect');
@@ -22,11 +21,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      if (COMING_SOON && user.role !== 'admin') {
-        logout();
-        toast.error('Only admin accounts can sign in while the site is in coming soon mode.');
-        return;
-      }
       toast.success('Welcome back');
       if (isStaff(user)) navigate(defaultStaffPage(user.role));
       else navigate(redirect || '/');
@@ -39,24 +33,18 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      title={COMING_SOON ? 'Admin sign in' : 'Welcome back'}
-      subtitle={
-        COMING_SOON
-          ? 'Staff console access while the storefront is in coming soon mode.'
-          : 'Sign in to track orders, save favorites, and check out faster.'
-      }
+      title="Welcome back"
+      subtitle="Sign in to track orders, save favorites, and check out faster."
       footer={
-        COMING_SOON ? null : (
-          <>
-            New here?{' '}
-            <Link
-              to={`/signup${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}
-              className="font-semibold text-wheat-500 underline-offset-2 hover:underline"
-            >
-              Create account
-            </Link>
-          </>
-        )
+        <>
+          New here?{' '}
+          <Link
+            to={`/signup${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}
+            className="font-semibold text-wheat-500 underline-offset-2 hover:underline"
+          >
+            Create account
+          </Link>
+        </>
       }
     >
       <form onSubmit={submit} className="space-y-5">

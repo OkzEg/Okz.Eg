@@ -9,9 +9,6 @@ import StoreHeader from './components/store/StoreHeader';
 import StoreFooter from './components/store/StoreFooter';
 import StaffLayout from './components/staff/StaffLayout';
 import { defaultStaffPage, isStaff } from './utils/permissions';
-
-import { COMING_SOON } from './config';
-import ComingSoonPage from './pages/ComingSoonPage';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
 import ProductPage from './pages/ProductPage';
@@ -110,11 +107,8 @@ function PrefetchStaffChunks() {
 function StoreShell({ children }) {
   const location = useLocation();
   const isStaffRoute = location.pathname.startsWith('/staff');
-  const isComingSoon = COMING_SOON && location.pathname === '/';
   const hideChrome =
-    isComingSoon ||
-    ['/login', '/signup'].includes(location.pathname) ||
-    isStaffRoute;
+    ['/login', '/signup'].includes(location.pathname) || isStaffRoute;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -140,7 +134,6 @@ function RequireCustomer({ children }) {
 function StaffHome() {
   const { user } = useAuth();
   if (!user || !isStaff(user)) return <Navigate to="/login" replace />;
-  if (COMING_SOON && user.role !== 'admin') return <Navigate to="/login" replace />;
   return <Navigate to={defaultStaffPage(user.role)} replace />;
 }
 
@@ -149,55 +142,35 @@ function AppRoutes() {
     <StoreShell>
       <PrefetchStaffChunks />
       <Routes>
-        {COMING_SOON ? (
-          <>
-            <Route path="/" element={<ComingSoonPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/staff" element={<StaffHome />} />
-            <Route path="/staff/dashboard" element={<StaffRoute page="dashboard"><StaffDashboard /></StaffRoute>} />
-            <Route path="/staff/products" element={<StaffRoute page="products"><StaffProducts /></StaffRoute>} />
-            <Route path="/staff/orders" element={<StaffRoute page="orders"><StaffOrders /></StaffRoute>} />
-            <Route path="/staff/deliveries" element={<StaffRoute page="deliveries"><StaffDeliveries /></StaffRoute>} />
-            <Route path="/staff/problems" element={<StaffRoute page="problems"><StaffProblems /></StaffRoute>} />
-            <Route path="/staff/users" element={<StaffRoute page="users"><StaffUsers /></StaffRoute>} />
-            <Route path="/staff/slides" element={<StaffRoute page="slides"><StaffSlides /></StaffRoute>} />
-            <Route path="/staff/promotions" element={<StaffRoute page="promotions"><StaffPromotions /></StaffRoute>} />
-            <Route path="/staff/finance" element={<StaffRoute page="finance"><StaffFinance /></StaffRoute>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </>
-        ) : (
-          <>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/shop" element={<ShopPage />} />
-            <Route path="/product/:id" element={<ProductPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/order-success" element={<OrderSuccessPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/account" element={<RequireCustomer><AccountPage /></RequireCustomer>} />
-            <Route path="/order/:id" element={<RequireCustomer><OrderPage /></RequireCustomer>} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/returns" element={<ReturnsPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/shop" element={<ShopPage />} />
+        <Route path="/product/:id" element={<ProductPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/order-success" element={<OrderSuccessPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/account" element={<RequireCustomer><AccountPage /></RequireCustomer>} />
+        <Route path="/order/:id" element={<RequireCustomer><OrderPage /></RequireCustomer>} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/returns" element={<ReturnsPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
 
-            <Route path="/staff" element={<StaffHome />} />
-            <Route path="/staff/dashboard" element={<StaffRoute page="dashboard"><StaffDashboard /></StaffRoute>} />
-            <Route path="/staff/products" element={<StaffRoute page="products"><StaffProducts /></StaffRoute>} />
-            <Route path="/staff/orders" element={<StaffRoute page="orders"><StaffOrders /></StaffRoute>} />
-            <Route path="/staff/deliveries" element={<StaffRoute page="deliveries"><StaffDeliveries /></StaffRoute>} />
-            <Route path="/staff/problems" element={<StaffRoute page="problems"><StaffProblems /></StaffRoute>} />
-            <Route path="/staff/users" element={<StaffRoute page="users"><StaffUsers /></StaffRoute>} />
-            <Route path="/staff/slides" element={<StaffRoute page="slides"><StaffSlides /></StaffRoute>} />
-            <Route path="/staff/promotions" element={<StaffRoute page="promotions"><StaffPromotions /></StaffRoute>} />
-            <Route path="/staff/finance" element={<StaffRoute page="finance"><StaffFinance /></StaffRoute>} />
+        <Route path="/staff" element={<StaffHome />} />
+        <Route path="/staff/dashboard" element={<StaffRoute page="dashboard"><StaffDashboard /></StaffRoute>} />
+        <Route path="/staff/products" element={<StaffRoute page="products"><StaffProducts /></StaffRoute>} />
+        <Route path="/staff/orders" element={<StaffRoute page="orders"><StaffOrders /></StaffRoute>} />
+        <Route path="/staff/deliveries" element={<StaffRoute page="deliveries"><StaffDeliveries /></StaffRoute>} />
+        <Route path="/staff/problems" element={<StaffRoute page="problems"><StaffProblems /></StaffRoute>} />
+        <Route path="/staff/users" element={<StaffRoute page="users"><StaffUsers /></StaffRoute>} />
+        <Route path="/staff/slides" element={<StaffRoute page="slides"><StaffSlides /></StaffRoute>} />
+        <Route path="/staff/promotions" element={<StaffRoute page="promotions"><StaffPromotions /></StaffRoute>} />
+        <Route path="/staff/finance" element={<StaffRoute page="finance"><StaffFinance /></StaffRoute>} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </>
-        )}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </StoreShell>
   );

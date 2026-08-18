@@ -15,6 +15,7 @@ import api from '../api/axios';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { formatMoney, optimizeImageUrl, getAvailableStock, PRODUCT_TYPES, FREE_SHIPPING_MIN } from '../utils/helpers';
+import ProductReviews from '../components/store/ProductReviews';
 
 function Accordion({ title, open, onToggle, children }) {
   return (
@@ -494,6 +495,8 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
+
+        <ProductReviews productId={product.id} />
       </div>
 
       {/* Mobile sticky ATC */}

@@ -53,6 +53,7 @@ model User {
   orders           Order[]
   problemRequests  ProblemRequest[] @relation("CustomerProblems")
   createdProblems  ProblemRequest[] @relation("CreatedProblems")
+  reviews          Review[]
 }
 
 model Product {
@@ -77,6 +78,7 @@ model Product {
   updatedAt    DateTime    @updatedAt
 
   orderItems OrderItem[]
+  reviews    Review[]
 }
 
 model Slide {
@@ -89,6 +91,21 @@ model Slide {
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
 }
 
 model Coupon {

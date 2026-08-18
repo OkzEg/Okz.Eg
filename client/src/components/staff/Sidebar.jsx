@@ -1,7 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Truck, AlertTriangle, Users,
-  Images, Tag, Wallet, LogOut, Boxes,
+  Images, Tag, Wallet, LogOut, Boxes, Store,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../utils/permissions';
@@ -47,6 +47,10 @@ export default function Sidebar() {
 
       <div className="p-3 border-t border-white/10 space-y-2">
         <div className="px-3 text-xs text-timber-300 truncate">{user?.email}</div>
+        <Link to="/" className="sidebar-link sidebar-link-inactive w-full">
+          <Store className="w-5 h-5" />
+          <span>View store</span>
+        </Link>
         <button
           type="button"
           className="sidebar-link sidebar-link-inactive w-full"

@@ -58,20 +58,6 @@ export default function ProductCard({ product }) {
     );
   };
 
-  const prev = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!photos.length) return;
-    setPhotoIndex((i) => (i - 1 + photos.length) % photos.length);
-  };
-
-  const next = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!photos.length) return;
-    setPhotoIndex((i) => (i + 1) % photos.length);
-  };
-
   return (
     <Link
       to={`/product/${product.id}`}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react';
-import { getImageUrl, formatMoney, PRODUCT_TYPES } from '../../utils/helpers';
+import { optimizeImageUrl, formatMoney, PRODUCT_TYPES } from '../../utils/helpers';
 import { useWishlist } from '../../context/WishlistContext';
 
 export default function ProductCard({ product }) {
@@ -39,8 +39,10 @@ export default function ProductCard({ product }) {
       <div className="relative aspect-square overflow-hidden bg-timber-100">
         {photos.length ? (
           <img
-            src={getImageUrl(photos[photoIndex])}
+            src={optimizeImageUrl(photos[photoIndex], { width: 640 })}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-[1.03]"
             draggable={false}
           />

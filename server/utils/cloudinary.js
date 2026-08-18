@@ -23,7 +23,11 @@ const uploadImage = async (filePathOrDataUri, folder = 'okz') => {
     folder,
     resource_type: 'image',
   });
-  return result.secure_url;
+  return {
+    url: result.secure_url,
+    width: result.width,
+    height: result.height,
+  };
 };
 
 module.exports = { cloudinary, uploadImage, isCloudinaryConfigured };

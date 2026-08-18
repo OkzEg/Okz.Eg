@@ -27,7 +27,7 @@ const uploadSiteAsset = [
       }
 
       const folder = req.body.folder || 'okz/site';
-      const url = await uploadImage(dataUri, folder);
+      const { url } = await uploadImage(dataUri, folder);
 
       if (req.body.key) {
         await prisma.siteAsset.upsert({

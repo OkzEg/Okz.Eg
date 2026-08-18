@@ -77,6 +77,8 @@ model Product {
 model Slide {
   id            String   @id @default(uuid())
   cloudinaryUrl String
+  width         Int?
+  height        Int?
   title         String   @default("New Arrival")
   description   String   @default("Shop the collection")
   sortOrder     Int      @default(0)

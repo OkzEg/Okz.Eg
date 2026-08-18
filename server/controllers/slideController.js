@@ -10,6 +10,8 @@ const slideListQuery = () =>
     select: {
       id: true,
       cloudinaryUrl: true,
+      width: true,
+      height: true,
       title: true,
       description: true,
       sortOrder: true,
@@ -39,6 +41,8 @@ const createSlide = async (req, res) => {
   try {
     const { title, description, sortOrder, imageUrl, imageData } = req.body;
     let cloudinaryUrl = imageUrl?.trim() || null;
+    let width = null;
+    let height = null;
 
     if (req.file) {
       if (!isCloudinaryConfigured()) {
@@ -47,14 +51,20 @@ const createSlide = async (req, res) => {
         });
       }
       const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-      cloudinaryUrl = await uploadImage(dataUri, 'okz/slides');
+      const uploaded = await uploadImage(dataUri, 'okz/slides');
+      cloudinaryUrl = uploaded.url;
+      width = uploaded.width;
+      height = uploaded.height;
     } else if (imageData) {
       if (!isCloudinaryConfigured()) {
         return res.status(503).json({
           message: 'Cloudinary is not configured. Add CLOUDINARY_* env vars or paste an image URL.',
         });
       }
-      cloudinaryUrl = await uploadImage(imageData, 'okz/slides');
+      const uploaded = await uploadImage(imageData, 'okz/slides');
+      cloudinaryUrl = uploaded.url;
+      width = uploaded.width;
+      height = uploaded.height;
     } else if (!cloudinaryUrl) {
       return res.status(400).json({ message: 'Upload an image or paste an image URL' });
     }
@@ -62,6 +72,8 @@ const createSlide = async (req, res) => {
     const slide = await prisma.slide.create({
       data: {
         cloudinaryUrl,
+        width,
+        height,
         title: title?.trim() || 'New Arrival',
         description: description?.trim() || 'Shop the collection',
         sortOrder: Number(sortOrder) || 0,
@@ -91,16 +103,24 @@ const updateSlide = async (req, res) => {
         });
       }
       const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-      data.cloudinaryUrl = await uploadImage(dataUri, 'okz/slides');
+      const uploaded = await uploadImage(dataUri, 'okz/slides');
+      data.cloudinaryUrl = uploaded.url;
+      data.width = uploaded.width;
+      data.height = uploaded.height;
     } else if (imageData) {
       if (!isCloudinaryConfigured()) {
         return res.status(503).json({
           message: 'Cloudinary is not configured. Add CLOUDINARY_* env vars or paste an image URL.',
         });
       }
-      data.cloudinaryUrl = await uploadImage(imageData, 'okz/slides');
+      const uploaded = await uploadImage(imageData, 'okz/slides');
+      data.cloudinaryUrl = uploaded.url;
+      data.width = uploaded.width;
+      data.height = uploaded.height;
     } else if (imageUrl) {
       data.cloudinaryUrl = String(imageUrl).trim();
+      data.width = null;
+      data.height = null;
     }
 
     const slide = await prisma.slide.update({

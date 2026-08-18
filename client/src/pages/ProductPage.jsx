@@ -13,7 +13,7 @@ import {
 import api from '../api/axios';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { formatMoney, getImageUrl, getAvailableStock, PRODUCT_TYPES, FREE_SHIPPING_MIN } from '../utils/helpers';
+import { formatMoney, optimizeImageUrl, getAvailableStock, PRODUCT_TYPES, FREE_SHIPPING_MIN } from '../utils/helpers';
 
 function Accordion({ title, open, onToggle, children }) {
   return (
@@ -193,8 +193,9 @@ export default function ProductPage() {
             <div className="relative aspect-square overflow-hidden rounded-[16px] border border-timber-200/70 bg-timber-100 shadow-[0_18px_40px_-28px_rgba(61,46,34,0.45)]">
               {photos[activePhoto] ? (
                 <img
-                  src={getImageUrl(photos[activePhoto])}
+                  src={optimizeImageUrl(photos[activePhoto], { width: 1200 })}
                   alt={product.name}
+                  decoding="async"
                   className="h-full w-full object-contain object-center"
                 />
               ) : (
@@ -231,8 +232,10 @@ export default function ProductPage() {
                     }`}
                   >
                     <img
-                      src={getImageUrl(p)}
+                      src={optimizeImageUrl(p, { width: 160 })}
                       alt=""
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-contain object-center bg-timber-50"
                     />
                   </button>

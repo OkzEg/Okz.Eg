@@ -21,6 +21,36 @@ export const getImageUrl = (path) => {
   return path;
 };
 
+/** Cloudinary delivery transforms — smaller, modern formats, capped width. */
+export const optimizeImageUrl = (path, { width = 800, quality = 'auto' } = {}) => {
+  const url = getImageUrl(path);
+  if (!url || !url.includes('res.cloudinary.com/image/upload/')) return url;
+
+  const tx = `f_auto,q_${quality},w_${width},c_limit,dpr_auto`;
+  const [prefix, rest] = url.split('/upload/');
+  if (!rest || rest.startsWith(`${tx}/`)) return url;
+  return `${prefix}/upload/${tx}/${rest}`;
+};
+
+export const getSlideAspectRatio = (slide) => {
+  const w = Number(slide?.width);
+  const h = Number(slide?.height);
+  if (w > 0 && h > 0) return w / h;
+  return null;
+};
+
+export const preloadImage = (src) =>
+  new Promise((resolve, reject) => {
+    if (!src) {
+      resolve(null);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
 export const PRODUCT_TYPES = [
   { value: 'shoe', label: 'Shoes' },
   { value: 'belt', label: 'Belts' },

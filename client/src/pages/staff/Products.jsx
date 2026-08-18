@@ -287,9 +287,9 @@ export default function StaffProducts() {
                 </td>
                 <td className="capitalize">{p.type.replace('_', ' ')}</td>
                 <td>{formatMoney(p.price)}</td>
-                <td className="!whitespace-normal min-w-[16rem]">
+                <td className="!whitespace-normal">
                   {p.sizes?.length ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col items-start gap-1.5">
                       {p.sizes.map((size) => {
                         const qty = Number(p.sizeStock?.[size]) || 0;
                         return (

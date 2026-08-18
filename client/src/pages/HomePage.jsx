@@ -41,7 +41,7 @@ export default function HomePage() {
           </Link>
         </div>
         {loadingProducts ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 md:gap-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="animate-pulse">
                 <div className="aspect-square rounded-xl bg-timber-100" />
@@ -53,7 +53,7 @@ export default function HomePage() {
         ) : products.length === 0 ? (
           <p className="text-timber-500 text-sm">No products yet — check back soon.</p>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 md:gap-6">
             {products.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

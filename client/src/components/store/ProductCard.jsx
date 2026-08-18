@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { optimizeImageUrl, formatMoney, PRODUCT_TYPES, getAvailableStock } from '../../utils/helpers';
@@ -17,14 +17,15 @@ export default function ProductCard({ product }) {
   const typeLabel =
     PRODUCT_TYPES.find((t) => t.value === product.type)?.label ||
     product.type.replace('_', ' ');
-  const colorLabel =
-    product.colors?.length > 0 ? product.colors.slice(0, 2).join(' · ') : 'Standard';
   const defaultSize = product.sizes?.length
     ? product.sizes.find((s) => getAvailableStock(product, s) > 0)
     : null;
   const canAdd = product.sizes?.length
     ? Boolean(defaultSize)
     : (Number(product.stock) || 0) >= 1;
+
+  const touchStartX = useRef(null);
+  const swiped = useRef(false);
 
   const prev = (e) => {
     e.preventDefault();
@@ -38,6 +39,23 @@ export default function ProductCard({ product }) {
     e.stopPropagation();
     if (!photos.length) return;
     setPhotoIndex((i) => (i + 1) % photos.length);
+  };
+
+  const onTouchStart = (e) => {
+    if (photos.length < 2) return;
+    touchStartX.current = e.changedTouches[0].clientX;
+    swiped.current = false;
+  };
+
+  const onTouchEnd = (e) => {
+    if (touchStartX.current == null || photos.length < 2) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 28) return;
+    swiped.current = true;
+    setPhotoIndex((i) =>
+      dx < 0 ? (i + 1) % photos.length : (i - 1 + photos.length) % photos.length
+    );
   };
 
   const addToCart = (e) => {
@@ -59,28 +77,40 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <Link
-      to={`/product/${product.id}`}
-      className="group flex flex-col overflow-hidden rounded-[16px] border border-timber-200/80 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:border-wheat-200 hover:shadow-[0_24px_50px_-30px_rgba(61,46,34,0.35)]"
-    >
-      <div className="relative aspect-square overflow-hidden bg-timber-100">
-        {photos.length ? (
-          <img
-            src={optimizeImageUrl(photos[photoIndex], { width: 640 })}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-[1.03]"
-            draggable={false}
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-sm text-timber-400">
-            No photo
-          </div>
-        )}
+    <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-timber-200/80 bg-white sm:rounded-[16px] sm:transition-all sm:duration-300 sm:hover:-translate-y-0.5 sm:hover:border-wheat-200 sm:hover:shadow-[0_24px_50px_-30px_rgba(61,46,34,0.35)]">
+      <div
+        className="relative aspect-square overflow-hidden bg-timber-100 touch-pan-y"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        <Link
+          to={`/product/${product.id}`}
+          className="absolute inset-0"
+          onClick={(e) => {
+            if (swiped.current) {
+              e.preventDefault();
+              swiped.current = false;
+            }
+          }}
+        >
+          {photos.length ? (
+            <img
+              src={optimizeImageUrl(photos[photoIndex], { width: 640 })}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-contain object-center sm:transition sm:duration-500 sm:group-hover:scale-[1.03]"
+              draggable={false}
+            />
+          ) : (
+            <span className="grid h-full w-full place-items-center text-xs text-timber-400 sm:text-sm">
+              No photo
+            </span>
+          )}
+        </Link>
 
         {product.isSaleActive && (
-          <span className="absolute start-3 top-3 rounded-full bg-timber-800 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-wheat">
+          <span className="pointer-events-none absolute start-2 top-2 rounded-full bg-timber-800 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-wheat sm:start-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[10px]">
             Sale
           </span>
         )}
@@ -90,7 +120,7 @@ export default function ProductCard({ product }) {
             <button
               type="button"
               onClick={prev}
-              className="absolute start-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100"
+              className="absolute start-1.5 top-1/2 hidden h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100 sm:grid"
               aria-label="Previous photo"
             >
               <ChevronLeft size={16} />
@@ -98,17 +128,17 @@ export default function ProductCard({ product }) {
             <button
               type="button"
               onClick={next}
-              className="absolute end-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100"
+              className="absolute end-1.5 top-1/2 hidden h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100 sm:grid"
               aria-label="Next photo"
             >
               <ChevronRight size={16} />
             </button>
-            <div className="absolute inset-x-0 bottom-2 flex justify-center gap-1.5">
+            <div className="pointer-events-none absolute inset-x-0 bottom-1.5 flex justify-center gap-1 sm:bottom-2 sm:gap-1.5">
               {photos.slice(0, 6).map((_, i) => (
                 <span
                   key={i}
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    i === photoIndex ? 'bg-white' : 'bg-white/50'
+                  className={`h-1 w-1 rounded-full sm:h-1.5 sm:w-1.5 ${
+                    i === photoIndex ? 'bg-timber-800 sm:bg-white' : 'bg-timber-800/30 sm:bg-white/50'
                   }`}
                 />
               ))}
@@ -124,46 +154,44 @@ export default function ProductCard({ product }) {
             e.stopPropagation();
             toggle(product);
           }}
-          className="absolute end-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/95 shadow-sm transition hover:scale-105"
+          className="absolute end-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full bg-white/95 shadow-sm sm:end-3 sm:top-3 sm:h-9 sm:w-9"
         >
           <Heart
-            className={`h-4 w-4 ${liked ? 'fill-red-500 text-red-500' : 'text-timber-800'}`}
+            className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${liked ? 'fill-red-500 text-red-500' : 'text-timber-800'}`}
           />
         </button>
       </div>
 
-      <div className="flex flex-col gap-1 p-3.5">
-        <h3 className="text-[15px] font-semibold leading-snug text-timber-800 line-clamp-2">
-          {product.name}
-        </h3>
-        <p className="text-[13px] text-timber-400">
-          {typeLabel} · {colorLabel}
-        </p>
-        <p
-          className={`text-[13px] ${
-            product.stock < 1
-              ? 'text-red-600'
-              : product.stock <= 5
-                ? 'font-medium text-amber-700'
-                : 'text-timber-400'
-          }`}
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 p-2.5 sm:gap-1 sm:p-3.5">
+        <Link
+          to={`/product/${product.id}`}
+          className="line-clamp-2 text-[13px] font-semibold leading-snug text-timber-800 sm:text-[15px]"
         >
-          {product.stock < 1
-            ? 'Out of stock'
-            : product.stock <= 5
-              ? `Only ${product.stock} left`
-              : 'In stock'}
+          {product.name}
+        </Link>
+        <p className="hidden truncate text-[13px] text-timber-400 sm:block">
+          {typeLabel}
+          {product.colors?.length ? ` · ${product.colors.slice(0, 2).join(' · ')}` : ''}
         </p>
+        {product.stock < 1 ? (
+          <p className="text-[11px] text-red-600 sm:text-[13px]">Out of stock</p>
+        ) : product.stock <= 5 ? (
+          <p className="text-[11px] font-medium text-amber-700 sm:text-[13px]">
+            Only {product.stock} left
+          </p>
+        ) : (
+          <p className="hidden text-[13px] text-timber-400 sm:block">In stock</p>
+        )}
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-          <div className="flex min-w-0 items-baseline gap-2">
-            <span className="text-[19px] font-semibold tabular-nums text-timber-800">
+        <div className="mt-auto flex items-end justify-between gap-1.5 pt-1.5 sm:items-center sm:gap-2 sm:pt-2">
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-semibold tabular-nums leading-tight text-timber-800 sm:text-[19px]">
               {formatMoney(price)}
-            </span>
+            </p>
             {product.isSaleActive && product.salePrice != null && (
-              <span className="text-[12.5px] text-timber-400 line-through">
+              <p className="truncate text-[11px] text-timber-400 line-through sm:text-[12.5px]">
                 {formatMoney(product.price)}
-              </span>
+              </p>
             )}
           </div>
           <button
@@ -172,12 +200,12 @@ export default function ProductCard({ product }) {
             onClick={addToCart}
             aria-label="Add to cart"
             title={canAdd ? 'Add to cart' : 'Out of stock'}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-timber-800 text-wheat shadow-sm transition hover:bg-timber-700 hover:scale-105 disabled:cursor-not-allowed disabled:bg-timber-200 disabled:text-timber-400 disabled:hover:scale-100"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-timber-800 text-wheat shadow-sm sm:h-10 sm:w-10 sm:transition sm:hover:scale-105 sm:hover:bg-timber-700 disabled:cursor-not-allowed disabled:bg-timber-200 disabled:text-timber-400 disabled:hover:scale-100"
           >
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }

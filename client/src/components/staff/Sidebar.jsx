@@ -1,7 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Truck, AlertTriangle, Users,
-  Images, Tag, Wallet, LogOut, Boxes, Store,
+  Images, Tag, Wallet, LogOut, Boxes, Store, LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../utils/permissions';
@@ -10,6 +10,7 @@ import BrandLogo from '../BrandLogo';
 const NAV = [
   { path: '/staff/dashboard', label: 'Dashboard', icon: LayoutDashboard, page: 'dashboard' },
   { path: '/staff/products', label: 'Products', icon: Package, page: 'products' },
+  { path: '/staff/homepage', label: 'Homepage', icon: LayoutGrid, page: 'homepage' },
   { path: '/staff/orders', label: 'Orders', icon: Boxes, page: 'orders' },
   { path: '/staff/deliveries', label: 'Deliveries', icon: Truck, page: 'deliveries' },
   { path: '/staff/problems', label: 'Problems', icon: AlertTriangle, page: 'problems' },

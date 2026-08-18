@@ -36,6 +36,7 @@ const ReturnsPage = lazy(() =>
 );
 
 const StaffProducts = lazy(() => import('./pages/staff/Products'));
+const StaffHomepage = lazy(() => import('./pages/staff/Homepage'));
 const StaffOrders = lazy(() => import('./pages/staff/Orders'));
 const StaffDeliveries = lazy(() => import('./pages/staff/Deliveries'));
 const StaffProblems = lazy(() => import('./pages/staff/Problems'));
@@ -46,6 +47,7 @@ const StaffFinance = lazy(() => import('./pages/staff/Finance'));
 
 const STAFF_PREFETCH = [
   () => import('./pages/staff/Products'),
+  () => import('./pages/staff/Homepage'),
   () => import('./pages/staff/Orders'),
   () => import('./pages/staff/Deliveries'),
   () => import('./pages/staff/Problems'),
@@ -162,6 +164,7 @@ function AppRoutes() {
         <Route path="/staff" element={<StaffHome />} />
         <Route path="/staff/dashboard" element={<StaffRoute page="dashboard"><StaffDashboard /></StaffRoute>} />
         <Route path="/staff/products" element={<StaffRoute page="products"><StaffProducts /></StaffRoute>} />
+        <Route path="/staff/homepage" element={<StaffRoute page="homepage"><StaffHomepage /></StaffRoute>} />
         <Route path="/staff/orders" element={<StaffRoute page="orders"><StaffOrders /></StaffRoute>} />
         <Route path="/staff/deliveries" element={<StaffRoute page="deliveries"><StaffDeliveries /></StaffRoute>} />
         <Route path="/staff/problems" element={<StaffRoute page="problems"><StaffProblems /></StaffRoute>} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
@@ -18,6 +19,7 @@ export default function StaffSlides() {
   const [slides, setSlides] = useState([]);
   const [cloudOk, setCloudOk] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -38,15 +40,33 @@ export default function StaffSlides() {
   };
 
   const resetForm = () => {
+    setEditing(null);
     setForm(emptyForm);
     setFile(null);
   };
 
-  const create = async (e) => {
+  const openCreate = () => {
+    resetForm();
+    setOpen(true);
+  };
+
+  const openEdit = (slide) => {
+    setEditing(slide);
+    setForm({
+      title: slide.title || '',
+      description: slide.description || '',
+      imageUrl: '',
+      sortOrder: slide.sortOrder ?? 0,
+    });
+    setFile(null);
+    setOpen(true);
+  };
+
+  const save = async (e) => {
     e.preventDefault();
     const imageUrl = form.imageUrl.trim();
 
-    if (!file && !imageUrl) {
+    if (!editing && !file && !imageUrl) {
       toast.error('Upload an image or paste an image URL');
       return;
     }
@@ -69,12 +89,17 @@ export default function StaffSlides() {
 
       if (file) {
         payload.imageData = await readFileAsDataUrl(file);
-      } else {
+      } else if (imageUrl) {
         payload.imageUrl = imageUrl;
       }
 
-      await api.post('/slides', payload);
-      toast.success('Slide added');
+      if (editing) {
+        await api.put(`/slides/${editing.id}`, payload);
+        toast.success('Slide updated');
+      } else {
+        await api.post('/slides', payload);
+        toast.success('Slide added');
+      }
       setOpen(false);
       resetForm();
       load();
@@ -84,7 +109,9 @@ export default function StaffSlides() {
         err.response?.data?.message ||
         (status === 413
           ? 'Image is too large. Try a smaller file or paste a hosted URL.'
-          : 'Failed to save slide');
+          : editing
+            ? 'Failed to update slide'
+            : 'Failed to save slide');
       toast.error(message);
     } finally {
       setSaving(false);
@@ -122,7 +149,7 @@ export default function StaffSlides() {
             )}
           </p>
         </div>
-        <button type="button" className="btn-wheat" onClick={() => setOpen(true)}>
+        <button type="button" className="btn-wheat" onClick={openCreate}>
           Add slide
         </button>
       </div>
@@ -134,14 +161,20 @@ export default function StaffSlides() {
             <div className="p-4">
               <h3 className="font-semibold">{s.title}</h3>
               <p className="text-sm text-timber-500 mt-1">{s.description}</p>
-              <button
-                type="button"
-                className="btn-ghost btn-sm text-red-600 mt-3"
-                disabled={deletingId === s.id}
-                onClick={() => remove(s.id)}
-              >
-                {deletingId === s.id ? 'Deleting…' : 'Delete'}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className="btn-outline btn-sm" onClick={() => openEdit(s)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm text-red-600"
+                  disabled={deletingId === s.id}
+                  onClick={() => remove(s.id)}
+                >
+                  {deletingId === s.id ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -153,9 +186,9 @@ export default function StaffSlides() {
           setOpen(false);
           resetForm();
         }}
-        title="New slide"
+        title={editing ? 'Edit slide' : 'New slide'}
       >
-        <form onSubmit={create} className="space-y-4">
+        <form onSubmit={save} className="space-y-4">
           <div>
             <label className="label">Title</label>
             <input
@@ -183,8 +216,19 @@ export default function StaffSlides() {
               onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
             />
           </div>
+          {editing && (
+            <div>
+              <label className="label">Current image</label>
+              <img
+                src={getImageUrl(editing.cloudinaryUrl)}
+                alt=""
+                className="mt-1 h-32 w-full rounded-lg object-cover bg-timber-100"
+              />
+              <p className="mt-1 text-xs text-timber-400">Leave image fields empty to keep this photo.</p>
+            </div>
+          )}
           <div>
-            <label className="label">Upload (Cloudinary)</label>
+            <label className="label">{editing ? 'Replace image (optional)' : 'Upload (Cloudinary)'}</label>
             <input type="file" accept="image/*" onChange={onFile} className="input" />
             {file && <p className="mt-1 text-xs text-timber-500">{file.name}</p>}
           </div>
@@ -198,7 +242,7 @@ export default function StaffSlides() {
             />
           </div>
           <button type="submit" className="btn-wheat w-full" disabled={saving}>
-            {saving ? 'Saving…' : 'Save slide'}
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Save slide'}
           </button>
         </form>
       </Modal>

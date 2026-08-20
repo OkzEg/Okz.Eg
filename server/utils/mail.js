@@ -1,7 +1,19 @@
-const nodemailer = require('nodemailer');
 const { buildOrderConfirmationHtml, formatMoney } = require('./orderEmailTemplate');
 
 let transporter;
+let nodemailer;
+
+const loadNodemailer = () => {
+  if (nodemailer) return nodemailer;
+  try {
+    // Lazy load so a missing install does not crash the whole API on boot
+    nodemailer = require('nodemailer');
+    return nodemailer;
+  } catch (error) {
+    console.error('[mail] nodemailer is not installed:', error.message);
+    return null;
+  }
+};
 
 const isMailConfigured = () =>
   Boolean(
@@ -12,8 +24,10 @@ const isMailConfigured = () =>
 
 const getTransporter = () => {
   if (!isMailConfigured()) return null;
+  const nm = loadNodemailer();
+  if (!nm) return null;
   if (!transporter) {
-    transporter = nodemailer.createTransport({
+    transporter = nm.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
       secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',

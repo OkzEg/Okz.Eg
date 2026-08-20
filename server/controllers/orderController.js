@@ -9,6 +9,11 @@ const SHIPPING_FEE_CAIRO_GIZA = 80;
 const SHIPPING_FEE_OTHER = 110;
 const DIGITAL_PAYMENT_METHODS = new Set(['InstaPay', 'Online Wallet', 'Vodafone Cash']);
 
+const normalizePhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits || '';
+};
+
 const effectivePrice = (product) => {
   if (product.isSaleActive && product.salePrice != null) {
     return Number(product.salePrice);

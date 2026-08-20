@@ -2,7 +2,7 @@ const prisma = require('../lib/prisma');
 const cache = require('../lib/cache');
 const { getAvailableStock } = require('./productController');
 const { uploadImage, isCloudinaryConfigured } = require('../utils/cloudinary');
-const { sendOrderConfirmationEmail } = require('../utils/mail');
+const { queueOrderConfirmationEmail } = require('../utils/mail');
 
 const FREE_SHIPPING_MIN = 3000;
 const SHIPPING_FEE_CAIRO_GIZA = 80;
@@ -326,8 +326,8 @@ const createOrder = async (req, res) => {
     });
 
     const payload = serializeOrder(order);
-    await sendOrderConfirmationEmail(payload);
     res.status(201).json(payload);
+    queueOrderConfirmationEmail(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     if (error.message?.startsWith('Insufficient stock')) {
@@ -358,8 +358,8 @@ const createGuestOrder = async (req, res) => {
     if (!name || !phone) {
       return res.status(400).json({ message: 'Name and phone are required' });
     }
-    if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'A valid email is required' });
     }
     if (!paymentMethod || !shippingAddress) {
       return res.status(400).json({ message: 'Payment method and shipping address required' });
@@ -402,8 +402,8 @@ const createGuestOrder = async (req, res) => {
     });
 
     const payload = serializeOrder(order);
-    await sendOrderConfirmationEmail(payload);
     res.status(201).json(payload);
+    queueOrderConfirmationEmail(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     if (error.message?.startsWith('Insufficient stock')) {

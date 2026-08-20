@@ -40,6 +40,17 @@ const publicImageUrl = (path) => {
   return path;
 };
 
+const formatOrderDate = (value) => {
+  if (!value) return '—';
+  try {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString('en-EG', { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return '—';
+  }
+};
+
 const addressLines = (shippingAddress) => {
   if (!shippingAddress || typeof shippingAddress !== 'object') return [];
   return [
@@ -138,12 +149,7 @@ const buildOrderConfirmationHtml = (order) => {
                 <tr>
                   <td style="color:#6e686f;font-size:13px;padding-top:8px;">Date</td>
                   <td style="text-align:right;color:#2b262c;font-size:13px;padding-top:8px;">${escapeHtml(
-                    order.createdAt
-                      ? new Date(order.createdAt).toLocaleString('en-EG', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                        })
-                      : '—'
+                    formatOrderDate(order.createdAt)
                   )}</td>
                 </tr>
               </table>

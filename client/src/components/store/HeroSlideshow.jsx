@@ -74,25 +74,25 @@ export default function HeroSlideshow() {
   };
 
   return (
-    <section className="relative w-full overflow-hidden bg-timber-800">
+    <section className="relative w-full overflow-hidden bg-timber-900">
       <div
-        className="relative mx-auto w-full min-h-[62svh] max-h-[85svh] sm:min-h-0"
+        className="relative w-full min-h-[58svh] sm:min-h-[min(72svh,52rem)]"
         style={{ aspectRatio: currentRatio }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
         {!slides.length && (
-          <div className="absolute inset-0 animate-pulse bg-timber-700" aria-hidden />
+          <div className="absolute inset-0 animate-pulse bg-timber-800" aria-hidden />
         )}
 
         {slides.map((s, i) => {
           const active = i === index;
-          const src = srcFor(s, 1200);
+          const src = srcFor(s, 1600);
           return (
             <img
               key={s.id}
               src={src}
-              srcSet={`${srcFor(s, 800)} 800w, ${srcFor(s, 1200)} 1200w, ${srcFor(s, 1600)} 1600w`}
+              srcSet={`${srcFor(s, 800)} 800w, ${srcFor(s, 1200)} 1200w, ${srcFor(s, 1600)} 1600w, ${srcFor(s, 2000)} 2000w`}
               sizes="100vw"
               alt={s.title}
               width={s.width || undefined}
@@ -101,14 +101,14 @@ export default function HeroSlideshow() {
               decoding="async"
               draggable={false}
               onLoad={(e) => onImageLoad(s, e)}
-              className={`absolute inset-0 mx-auto block h-full w-full object-cover md:object-contain transition-opacity duration-500 ${
-                active ? 'opacity-80 md:opacity-70' : 'opacity-0'
+              className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500 ${
+                active ? 'opacity-100' : 'opacity-0'
               }`}
             />
           );
         })}
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-timber-900/90 via-timber-800/45 to-timber-800/20 md:bg-gradient-to-r md:from-timber-800/95 md:via-timber-700/55 md:to-timber-800/20" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-timber-900/70 via-transparent to-timber-900/25 md:bg-gradient-to-r md:from-timber-900/75 md:via-timber-900/25 md:to-transparent" />
 
         <div className="absolute inset-0 flex items-end md:items-center">
           <div className="relative mx-auto w-full max-w-7xl px-5 pb-14 pt-24 sm:px-8 sm:pb-16 md:pt-32">
@@ -116,7 +116,7 @@ export default function HeroSlideshow() {
               <h1 className="font-display text-4xl leading-[0.95] tracking-wide sm:text-6xl md:text-7xl">
                 {slide?.title || 'Built for the long haul.'}
               </h1>
-              <p className="mt-3 max-w-md text-balance text-sm text-timber-200 sm:mt-5 sm:text-lg">
+              <p className="mt-3 max-w-md text-balance text-sm text-timber-100 sm:mt-5 sm:text-lg">
                 {slide?.description ||
                   'Premium boots, belts, and gear from OKZ — ready for work and weekend.'}
               </p>

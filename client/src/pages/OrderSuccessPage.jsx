@@ -2,6 +2,7 @@ import { Link, useLocation, Navigate } from 'react-router-dom';
 import {
   formatMoney,
   INSTAPAY_HANDLE,
+  INSTAPAY_URL,
   VODAFONE_CASH_NUMBER,
 } from '../utils/helpers';
 
@@ -109,24 +110,32 @@ export default function OrderSuccessPage() {
         </div>
 
         {isWallet && (
-          <div className="card mt-4 space-y-2 text-left text-sm">
+          <div className="card mt-4 space-y-3 text-left text-sm">
             <p className="font-semibold text-timber-800">Payment receipt received</p>
             <p className="text-timber-600">
               Thanks — we have your transfer screenshot and will confirm payment when we contact you.
-              {isInstaPay && INSTAPAY_HANDLE ? (
-                <>
-                  {' '}
-                  InstaPay: <span className="font-semibold text-timber-900">{INSTAPAY_HANDLE}</span>
-                </>
-              ) : null}
-              {isVodafone && VODAFONE_CASH_NUMBER ? (
-                <>
-                  {' '}
-                  Vodafone Cash:{' '}
-                  <span className="font-semibold text-timber-900">{VODAFONE_CASH_NUMBER}</span>
-                </>
-              ) : null}
             </p>
+            {isInstaPay && INSTAPAY_URL && (
+              <a
+                href={INSTAPAY_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-wheat inline-flex w-full sm:w-auto"
+              >
+                Open InstaPay
+              </a>
+            )}
+            {isInstaPay && !INSTAPAY_URL && INSTAPAY_HANDLE ? (
+              <p className="text-timber-600">
+                InstaPay: <span className="font-semibold text-timber-900">{INSTAPAY_HANDLE}</span>
+              </p>
+            ) : null}
+            {isVodafone && VODAFONE_CASH_NUMBER ? (
+              <p className="text-timber-600">
+                Vodafone Cash:{' '}
+                <span className="font-semibold text-timber-900">{VODAFONE_CASH_NUMBER}</span>
+              </p>
+            ) : null}
           </div>
         )}
 

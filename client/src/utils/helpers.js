@@ -93,8 +93,11 @@ export const DIGITAL_PAYMENT_METHODS = ['InstaPay', 'Vodafone Cash'];
 
 export const isDigitalPayment = (method) => DIGITAL_PAYMENT_METHODS.includes(method);
 
-export const INSTAPAY_HANDLE = import.meta.env.VITE_INSTAPAY_HANDLE || '';
-export const VODAFONE_CASH_NUMBER = import.meta.env.VITE_VODAFONE_CASH_NUMBER || '';
+export const INSTAPAY_HANDLE = String(
+  import.meta.env.VITE_INSTAPAY_HANDLE || 'https://ipn.eg/S/omarhazm04/instapay/4CZCDb'
+).trim();
+export const INSTAPAY_URL = /^https?:\/\//i.test(INSTAPAY_HANDLE) ? INSTAPAY_HANDLE : '';
+export const VODAFONE_CASH_NUMBER = String(import.meta.env.VITE_VODAFONE_CASH_NUMBER || '').trim();
 
 export const shippingFeeForGovernorate = (governorate) => {
   const value = String(governorate || '').trim().toLowerCase();

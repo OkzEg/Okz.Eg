@@ -13,6 +13,7 @@ import {
   FREE_SHIPPING_MIN,
   PAYMENT_METHODS,
   INSTAPAY_HANDLE,
+  INSTAPAY_URL,
   VODAFONE_CASH_NUMBER,
   isDigitalPayment,
 } from '../utils/helpers';
@@ -258,11 +259,27 @@ export default function CheckoutPage() {
                 })}
               </div>
               {form.paymentMethod === 'InstaPay' && (
-                <p className="mt-3 rounded-lg bg-cream px-3 py-2.5 text-sm text-timber-600">
-                  {INSTAPAY_HANDLE
-                    ? <>Send to InstaPay: <span className="font-semibold text-timber-800">{INSTAPAY_HANDLE}</span>. Include your order phone in the note, then upload the receipt below.</>
-                    : 'Transfer via InstaPay, then upload your receipt below. We’ll confirm once we review it.'}
-                </p>
+                <div className="mt-3 space-y-3 rounded-lg bg-cream px-3 py-3 text-sm text-timber-600">
+                  <p>
+                    Open InstaPay, complete the transfer, then upload your receipt below. Include your
+                    order phone in the note.
+                  </p>
+                  {INSTAPAY_URL ? (
+                    <a
+                      href={INSTAPAY_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-wheat inline-flex w-full sm:w-auto"
+                    >
+                      Open InstaPay
+                    </a>
+                  ) : INSTAPAY_HANDLE ? (
+                    <p>
+                      Send to InstaPay:{' '}
+                      <span className="font-semibold text-timber-800">{INSTAPAY_HANDLE}</span>
+                    </p>
+                  ) : null}
+                </div>
               )}
               {form.paymentMethod === 'Vodafone Cash' && (
                 <p className="mt-3 rounded-lg bg-cream px-3 py-2.5 text-sm text-timber-600">

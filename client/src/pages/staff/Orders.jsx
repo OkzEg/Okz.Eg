@@ -55,7 +55,7 @@ export default function StaffOrders() {
       <div className="mb-6">
         <h1 className="page-title">Orders</h1>
         <p className="page-subtitle">
-          Cash orders confirm automatically. InstaPay / Vodafone Cash stay pending until you confirm
+          Cash orders confirm automatically. InstaPay / Online Wallet stay pending until you confirm
           payment.
         </p>
       </div>

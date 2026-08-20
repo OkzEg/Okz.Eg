@@ -73,7 +73,7 @@ export default function AboutPage() {
           </p>
           <p>
             Every pair is chosen for fit, finish, and lasting wear. We ship across Egypt with cash
-            on delivery, InstaPay, and Vodafone Cash so checkout stays easy.
+            on delivery, InstaPay, and Online Wallet so checkout stays easy.
           </p>
         </div>
       </section>
@@ -106,7 +106,7 @@ export default function AboutPage() {
         <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 md:grid-cols-3">
           {[
             ['Materials first', 'Leather and finishes selected for lasting daily wear.'],
-            ['Egypt-ready delivery', 'COD, InstaPay, and Vodafone Cash — confirmed within 12 hours.'],
+            ['Egypt-ready delivery', 'COD, InstaPay, and Online Wallet — confirmed within 12 hours.'],
             ['Easy returns', 'Unworn items can be returned within 14 days.'],
           ].map(([title, body]) => (
             <div key={title}>

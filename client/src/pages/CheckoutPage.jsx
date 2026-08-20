@@ -14,7 +14,7 @@ import {
   PAYMENT_METHODS,
   INSTAPAY_HANDLE,
   INSTAPAY_URL,
-  VODAFONE_CASH_NUMBER,
+  ONLINE_WALLET_NUMBER,
   isDigitalPayment,
 } from '../utils/helpers';
 
@@ -281,11 +281,11 @@ export default function CheckoutPage() {
                   ) : null}
                 </div>
               )}
-              {form.paymentMethod === 'Vodafone Cash' && (
+              {form.paymentMethod === 'Online Wallet' && (
                 <p className="mt-3 rounded-lg bg-cream px-3 py-2.5 text-sm text-timber-600">
-                  {VODAFONE_CASH_NUMBER
-                    ? <>Send to Vodafone Cash: <span className="font-semibold text-timber-800">{VODAFONE_CASH_NUMBER}</span>. Include your name in the transfer note, then upload the receipt below.</>
-                    : 'Transfer via Vodafone Cash, then upload your receipt below. We’ll confirm once we review it.'}
+                  {ONLINE_WALLET_NUMBER
+                    ? <>Send to Online Wallet: <span className="font-semibold text-timber-800">{ONLINE_WALLET_NUMBER}</span>. Include your name in the transfer note, then upload the receipt below.</>
+                    : 'Transfer via Online Wallet, then upload your receipt below. We’ll confirm once we review it.'}
                 </p>
               )}
             </div>

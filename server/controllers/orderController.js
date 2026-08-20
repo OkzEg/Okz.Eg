@@ -6,7 +6,7 @@ const { uploadImage, isCloudinaryConfigured } = require('../utils/cloudinary');
 const FREE_SHIPPING_MIN = 3000;
 const SHIPPING_FEE_CAIRO_GIZA = 80;
 const SHIPPING_FEE_OTHER = 110;
-const DIGITAL_PAYMENT_METHODS = new Set(['InstaPay', 'Vodafone Cash']);
+const DIGITAL_PAYMENT_METHODS = new Set(['InstaPay', 'Online Wallet', 'Vodafone Cash']);
 
 const effectivePrice = (product) => {
   if (product.isSaleActive && product.salePrice != null) {
@@ -467,7 +467,7 @@ const updateOrderStatus = async (req, res) => {
       data.paidAt = new Date();
     }
 
-    // Admin confirming a digital-wallet transfer (InstaPay / Vodafone Cash)
+    // Admin confirming a digital-wallet transfer (InstaPay / Online Wallet)
     if (
       status === 'confirmed' &&
       existing.status === 'pending' &&

@@ -488,7 +488,7 @@ export default function ProductPage() {
                   Orders take 2–3 business days
                 </p>
                 <p className="mt-2 text-timber-500">
-                  Cash on delivery, InstaPay, and Vodafone Cash available at checkout. Free shipping on
+                  Cash on delivery, InstaPay, and Online Wallet available at checkout. Free shipping on
                   orders over EGP 3,000.
                 </p>
               </Accordion>

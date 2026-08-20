@@ -237,6 +237,37 @@ const persistOrder = async ({
   return order;
 };
 
+/** Put reserved stock back when an order is canceled or deleted (once). */
+const restoreOrderStock = async (tx, items) => {
+  if (!items?.length) return;
+
+  for (const item of items) {
+    const product = await tx.product.findUnique({ where: { id: item.productId } });
+    if (!product) continue;
+
+    const qty = Number(item.qty) || 0;
+    if (qty < 1) continue;
+
+    if (product.sizes?.length && item.size) {
+      const sizeStock = { ...(product.sizeStock || {}) };
+      sizeStock[item.size] = (Number(sizeStock[item.size]) || 0) + qty;
+      const newTotal = product.sizes.reduce(
+        (sum, size) => sum + (Number(sizeStock[size]) || 0),
+        0
+      );
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { sizeStock, stock: newTotal },
+      });
+    } else {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: qty } },
+      });
+    }
+  }
+};
+
 const createOrder = async (req, res) => {
   try {
     if (req.user.role !== 'customer') {
@@ -454,37 +485,56 @@ const updateOrderStatus = async (req, res) => {
 
     const existing = await prisma.order.findUnique({
       where: { id: req.params.id },
-      select: { id: true, status: true, paymentMethod: true, isPaid: true },
+      include: { items: true },
     });
     if (!existing) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    const data = { status };
-    if (status === 'delivered') {
-      data.deliveredAt = new Date();
-      data.isPaid = true;
-      data.paidAt = new Date();
-    }
+    const order = await prisma.$transaction(async (tx) => {
+      // Canceling restores stock and clears payment so finance ignores the money
+      if (status === 'canceled' && existing.status !== 'canceled') {
+        await restoreOrderStock(tx, existing.items);
+      }
 
-    // Admin confirming a digital-wallet transfer (InstaPay / Online Wallet)
-    if (
-      status === 'confirmed' &&
-      existing.status === 'pending' &&
-      requiresPaymentReceipt(existing.paymentMethod)
-    ) {
-      data.isPaid = true;
-      data.paidAt = new Date();
-    }
+      const data = { status };
+      if (status === 'delivered') {
+        data.deliveredAt = new Date();
+        data.isPaid = true;
+        data.paidAt = new Date();
+      }
 
-    const order = await prisma.order.update({
-      where: { id: req.params.id },
-      data,
-      include: {
-        items: true,
-        user: { select: { id: true, name: true, email: true, phone: true } },
-      },
+      if (status === 'canceled') {
+        data.isPaid = false;
+        data.paidAt = null;
+        data.deliveredAt = null;
+      }
+
+      // Admin confirming a digital-wallet transfer (InstaPay / Online Wallet)
+      if (
+        status === 'confirmed' &&
+        existing.status === 'pending' &&
+        requiresPaymentReceipt(existing.paymentMethod)
+      ) {
+        data.isPaid = true;
+        data.paidAt = new Date();
+      }
+
+      return tx.order.update({
+        where: { id: req.params.id },
+        data,
+        include: {
+          items: true,
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
     });
+
+    if (status === 'canceled' && existing.status !== 'canceled') {
+      cache.invalidate('products');
+      cache.invalidate('product');
+    }
+
     res.json(serializeOrder(order));
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -495,15 +545,24 @@ const deleteOrder = async (req, res) => {
   try {
     const existing = await prisma.order.findUnique({
       where: { id: req.params.id },
-      select: { id: true },
+      include: { items: true },
     });
     if (!existing) return res.status(404).json({ message: 'Order not found' });
 
     await prisma.$transaction(async (tx) => {
+      // Restore stock unless it was already returned on cancel
+      if (existing.status !== 'canceled') {
+        await restoreOrderStock(tx, existing.items);
+      }
       await tx.problemRequest.deleteMany({ where: { orderId: req.params.id } });
       await tx.orderItem.deleteMany({ where: { orderId: req.params.id } });
       await tx.order.delete({ where: { id: req.params.id } });
     });
+
+    if (existing.status !== 'canceled') {
+      cache.invalidate('products');
+      cache.invalidate('product');
+    }
 
     res.json({ message: 'Order deleted', id: req.params.id });
   } catch (error) {
@@ -518,6 +577,7 @@ const financeSummary = async (req, res) => {
     if (from) createdAt.gte = new Date(from);
     if (to) createdAt.lte = new Date(to);
 
+    // Canceled orders never count toward money / order totals
     const where = {
       status: { not: 'canceled' },
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
@@ -526,10 +586,13 @@ const financeSummary = async (req, res) => {
     const orders = await prisma.order.findMany({
       where,
       include: { items: true },
+      orderBy: { createdAt: 'desc' },
     });
 
     const revenue = orders.reduce((sum, o) => sum + Number(o.totalPrice), 0);
-    const paid = orders.filter((o) => o.isPaid).reduce((sum, o) => sum + Number(o.totalPrice), 0);
+    const paid = orders
+      .filter((o) => o.isPaid)
+      .reduce((sum, o) => sum + Number(o.totalPrice), 0);
     const byStatus = orders.reduce((acc, o) => {
       acc[o.status] = (acc[o.status] || 0) + 1;
       return acc;

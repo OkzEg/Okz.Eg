@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Trash2 } from 'lucide-react';
 import api from '../../api/axios';
+import Modal from '../../components/ui/Modal';
 import { formatMoney, orderStatusBadge, orderStatusLabel } from '../../utils/helpers';
 
 export default function StaffOrders() {
   const [orders, setOrders] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const load = () => api.get('/orders').then((r) => setOrders(r.data));
 
@@ -44,6 +46,7 @@ export default function StaffOrders() {
               <th>Items</th>
               <th>Total</th>
               <th>Payment</th>
+              <th>Receipt</th>
               <th>Status</th>
               <th>Date</th>
               <th />
@@ -57,6 +60,24 @@ export default function StaffOrders() {
                 <td>{o.items?.length || 0}</td>
                 <td>{formatMoney(o.totalPrice)}</td>
                 <td>{o.paymentMethod}</td>
+                <td>
+                  {o.paymentReceiptUrl ? (
+                    <button
+                      type="button"
+                      className="block rounded-md border border-timber-200 overflow-hidden hover:ring-2 hover:ring-wheat focus:outline-none focus:ring-2 focus:ring-wheat"
+                      onClick={() => setPreviewUrl(o.paymentReceiptUrl)}
+                      title="Preview receipt"
+                    >
+                      <img
+                        src={o.paymentReceiptUrl}
+                        alt="Payment receipt"
+                        className="h-12 w-12 object-cover bg-timber-50"
+                      />
+                    </button>
+                  ) : (
+                    <span className="text-timber-400 text-xs">—</span>
+                  )}
+                </td>
                 <td><span className={orderStatusBadge[o.status]}>{orderStatusLabel[o.status]}</span></td>
                 <td>{new Date(o.createdAt).toLocaleDateString()}</td>
                 <td>
@@ -74,7 +95,7 @@ export default function StaffOrders() {
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center text-timber-400 py-8 text-sm">
+                <td colSpan={9} className="text-center text-timber-400 py-8 text-sm">
                   No orders yet
                 </td>
               </tr>
@@ -82,6 +103,21 @@ export default function StaffOrders() {
           </tbody>
         </table>
       </div>
+
+      <Modal
+        open={Boolean(previewUrl)}
+        onClose={() => setPreviewUrl('')}
+        title="Payment receipt"
+        wide
+      >
+        {previewUrl && (
+          <img
+            src={previewUrl}
+            alt="Payment receipt full size"
+            className="mx-auto max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
+          />
+        )}
+      </Modal>
     </>
   );
 }

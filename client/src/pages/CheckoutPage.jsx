@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Truck, ShieldCheck } from 'lucide-react';
+import { ImagePlus, Truck, ShieldCheck, X } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -14,13 +14,17 @@ import {
   PAYMENT_METHODS,
   INSTAPAY_HANDLE,
   VODAFONE_CASH_NUMBER,
+  isDigitalPayment,
 } from '../utils/helpers';
+
+const MAX_RECEIPT_BYTES = 8 * 1024 * 1024;
 
 export default function CheckoutPage() {
   const { user } = useAuth();
   const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const orderPlacedRef = useRef(false);
+  const receiptInputRef = useRef(null);
   const addr = user?.address || {};
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -34,9 +38,12 @@ export default function CheckoutPage() {
     paymentMethod: 'Cash on Delivery',
     couponCode: '',
   });
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState('');
   const [loading, setLoading] = useState(false);
-    const shipping = calcShipping(subtotal, form.state);
+  const shipping = calcShipping(subtotal, form.state);
   const total = subtotal + shipping;
+  const needsReceipt = isDigitalPayment(form.paymentMethod);
 
   useEffect(() => {
     // After a successful place-order we clear the cart — don't bounce to empty cart.
@@ -45,8 +52,52 @@ export default function CheckoutPage() {
     }
   }, [items.length, navigate, loading]);
 
+  useEffect(() => {
+    if (!receiptFile) {
+      setReceiptPreview('');
+      return undefined;
+    }
+    const url = URL.createObjectURL(receiptFile);
+    setReceiptPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [receiptFile]);
+
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setAddress = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+
+  const clearReceipt = () => {
+    setReceiptFile(null);
+    if (receiptInputRef.current) receiptInputRef.current.value = '';
+  };
+
+  const onPaymentChange = (method) => {
+    setForm((current) => ({ ...current, paymentMethod: method }));
+    if (!isDigitalPayment(method)) clearReceipt();
+  };
+
+  const onReceiptPick = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Receipt must be an image screenshot');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_RECEIPT_BYTES) {
+      toast.error('Receipt image must be under 8 MB');
+      e.target.value = '';
+      return;
+    }
+    setReceiptFile(file);
+  };
+
+  const uploadReceipt = async () => {
+    const body = new FormData();
+    body.append('image', receiptFile);
+    const { data } = await api.post('/upload/receipt', body);
+    if (!data?.url) throw new Error('Receipt upload failed');
+    return data.url;
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -56,6 +107,9 @@ export default function CheckoutPage() {
     }
     if (!form.email.trim()) {
       return toast.error('Email is required');
+    }
+    if (needsReceipt && !receiptFile) {
+      return toast.error('Upload your transaction receipt screenshot before placing the order');
     }
 
     const shippingAddress = {
@@ -75,14 +129,22 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
+      let paymentReceiptUrl;
+      if (needsReceipt) {
+        paymentReceiptUrl = await uploadReceipt();
+      }
+
+      const payload = {
+        orderItems,
+        paymentMethod: form.paymentMethod,
+        shippingAddress,
+        couponCode: form.couponCode || undefined,
+        paymentReceiptUrl,
+      };
+
       let data;
       if (user) {
-        ({ data } = await api.post('/orders', {
-          orderItems,
-          paymentMethod: form.paymentMethod,
-          shippingAddress,
-          couponCode: form.couponCode || undefined,
-        }));
+        ({ data } = await api.post('/orders', payload));
         if (form.phone && form.phone !== user.phone) {
           try {
             await api.put('/auth/profile', { phone: form.phone });
@@ -92,10 +154,7 @@ export default function CheckoutPage() {
         }
       } else {
         ({ data } = await api.post('/orders/guest', {
-          orderItems,
-          paymentMethod: form.paymentMethod,
-          shippingAddress,
-          couponCode: form.couponCode || undefined,
+          ...payload,
           guestName: form.name.trim(),
           guestPhone: form.phone.trim(),
           guestEmail: form.email.trim(),
@@ -107,7 +166,7 @@ export default function CheckoutPage() {
       clear();
       toast.success('Order placed');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Checkout failed');
+      toast.error(err.response?.data?.message || err.message || 'Checkout failed');
     } finally {
       setLoading(false);
     }
@@ -186,7 +245,7 @@ export default function CheckoutPage() {
                         name="paymentMethod"
                         className="mt-1 h-4 w-4 border-timber-300 text-wheat focus:ring-wheat"
                         checked={selected}
-                        onChange={() => setForm({ ...form, paymentMethod: method.value })}
+                        onChange={() => onPaymentChange(method.value)}
                       />
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-timber-800">
@@ -201,18 +260,72 @@ export default function CheckoutPage() {
               {form.paymentMethod === 'InstaPay' && (
                 <p className="mt-3 rounded-lg bg-cream px-3 py-2.5 text-sm text-timber-600">
                   {INSTAPAY_HANDLE
-                    ? <>Send to InstaPay: <span className="font-semibold text-timber-800">{INSTAPAY_HANDLE}</span>. Include your order phone in the note.</>
-                    : 'After you place the order, we’ll share our InstaPay details by phone.'}
+                    ? <>Send to InstaPay: <span className="font-semibold text-timber-800">{INSTAPAY_HANDLE}</span>. Include your order phone in the note, then upload the receipt below.</>
+                    : 'Transfer via InstaPay, then upload your receipt below. We’ll confirm once we review it.'}
                 </p>
               )}
               {form.paymentMethod === 'Vodafone Cash' && (
                 <p className="mt-3 rounded-lg bg-cream px-3 py-2.5 text-sm text-timber-600">
                   {VODAFONE_CASH_NUMBER
-                    ? <>Send to Vodafone Cash: <span className="font-semibold text-timber-800">{VODAFONE_CASH_NUMBER}</span>. Include your name in the transfer note.</>
-                    : 'After you place the order, we’ll share our Vodafone Cash number by phone.'}
+                    ? <>Send to Vodafone Cash: <span className="font-semibold text-timber-800">{VODAFONE_CASH_NUMBER}</span>. Include your name in the transfer note, then upload the receipt below.</>
+                    : 'Transfer via Vodafone Cash, then upload your receipt below. We’ll confirm once we review it.'}
                 </p>
               )}
             </div>
+
+            {needsReceipt && (
+              <div className="space-y-3 rounded-xl border border-dashed border-timber-300 bg-cream/50 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-timber-800">Transaction receipt</p>
+                  <p className="mt-1 text-xs text-timber-500">
+                    Upload a clear screenshot of your payment confirmation. Required before placing
+                    the order.
+                  </p>
+                </div>
+                <input
+                  ref={receiptInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={onReceiptPick}
+                />
+                {receiptPreview ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={receiptPreview}
+                      alt="Payment receipt preview"
+                      className="h-40 w-auto max-w-full rounded-lg border border-timber-200 object-contain bg-white"
+                    />
+                    <button
+                      type="button"
+                      className="absolute -end-2 -top-2 grid h-8 w-8 place-items-center rounded-full bg-timber-800 text-white shadow"
+                      onClick={clearReceipt}
+                      aria-label="Remove receipt"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline btn-sm mt-3"
+                      onClick={() => receiptInputRef.current?.click()}
+                    >
+                      Replace screenshot
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-outline w-full sm:w-auto"
+                    onClick={() => receiptInputRef.current?.click()}
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    Upload receipt screenshot
+                  </button>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="label">Promo code</label>
               <input
@@ -311,9 +424,18 @@ export default function CheckoutPage() {
               </p>
             </div>
 
-            <button type="submit" className="btn-wheat w-full py-3.5" disabled={loading}>
+            <button
+              type="submit"
+              className="btn-wheat w-full py-3.5"
+              disabled={loading || (needsReceipt && !receiptFile)}
+            >
               {loading ? 'Placing…' : 'Place order'}
             </button>
+            {needsReceipt && !receiptFile && (
+              <p className="text-center text-xs text-timber-500">
+                Upload a payment receipt to enable Place order
+              </p>
+            )}
           </div>
         </div>
       </form>

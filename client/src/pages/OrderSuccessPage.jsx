@@ -108,35 +108,25 @@ export default function OrderSuccessPage() {
           </div>
         </div>
 
-        {isInstaPay && (
+        {isWallet && (
           <div className="card mt-4 space-y-2 text-left text-sm">
-            <p className="font-semibold text-timber-800">InstaPay transfer</p>
-            {INSTAPAY_HANDLE ? (
-              <p className="text-timber-600">
-                Send <span className="font-semibold">{formatMoney(order.totalPrice)}</span> to{' '}
-                <span className="font-semibold text-timber-900">{INSTAPAY_HANDLE}</span>.
-              </p>
-            ) : (
-              <p className="text-timber-600">
-                We’ll share our InstaPay details when we call. Use your order number as the note.
-              </p>
-            )}
-          </div>
-        )}
-
-        {isVodafone && (
-          <div className="card mt-4 space-y-2 text-left text-sm">
-            <p className="font-semibold text-timber-800">Vodafone Cash transfer</p>
-            {VODAFONE_CASH_NUMBER ? (
-              <p className="text-timber-600">
-                Send <span className="font-semibold">{formatMoney(order.totalPrice)}</span> to{' '}
-                <span className="font-semibold text-timber-900">{VODAFONE_CASH_NUMBER}</span>.
-              </p>
-            ) : (
-              <p className="text-timber-600">
-                We’ll share our Vodafone Cash number when we call. Use your name as the note.
-              </p>
-            )}
+            <p className="font-semibold text-timber-800">Payment receipt received</p>
+            <p className="text-timber-600">
+              Thanks — we have your transfer screenshot and will confirm payment when we contact you.
+              {isInstaPay && INSTAPAY_HANDLE ? (
+                <>
+                  {' '}
+                  InstaPay: <span className="font-semibold text-timber-900">{INSTAPAY_HANDLE}</span>
+                </>
+              ) : null}
+              {isVodafone && VODAFONE_CASH_NUMBER ? (
+                <>
+                  {' '}
+                  Vodafone Cash:{' '}
+                  <span className="font-semibold text-timber-900">{VODAFONE_CASH_NUMBER}</span>
+                </>
+              ) : null}
+            </p>
           </div>
         )}
 

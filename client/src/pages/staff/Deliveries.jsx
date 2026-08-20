@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Trash2 } from 'lucide-react';
 import api from '../../api/axios';
+import Modal from '../../components/ui/Modal';
 import { formatMoney, orderStatusBadge, orderStatusLabel } from '../../utils/helpers';
 
 const NEXT = {
@@ -17,6 +18,7 @@ export default function StaffDeliveries() {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const load = () =>
     api.get('/orders' + (filter ? `?status=${filter}` : '')).then((r) => setOrders(r.data));
@@ -72,6 +74,7 @@ export default function StaffDeliveries() {
               <th>Phone</th>
               <th>Address</th>
               <th>Total</th>
+              <th>Receipt</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -86,6 +89,24 @@ export default function StaffDeliveries() {
                   {o.shippingAddress?.city}, {o.shippingAddress?.street}
                 </td>
                 <td>{formatMoney(o.totalPrice)}</td>
+                <td>
+                  {o.paymentReceiptUrl ? (
+                    <button
+                      type="button"
+                      className="block rounded-md border border-timber-200 overflow-hidden hover:ring-2 hover:ring-wheat focus:outline-none focus:ring-2 focus:ring-wheat"
+                      onClick={() => setPreviewUrl(o.paymentReceiptUrl)}
+                      title="Preview receipt"
+                    >
+                      <img
+                        src={o.paymentReceiptUrl}
+                        alt="Payment receipt"
+                        className="h-12 w-12 object-cover bg-timber-50"
+                      />
+                    </button>
+                  ) : (
+                    <span className="text-timber-400 text-xs">—</span>
+                  )}
+                </td>
                 <td><span className={orderStatusBadge[o.status]}>{orderStatusLabel[o.status]}</span></td>
                 <td>
                   <div className="flex flex-wrap gap-1 items-center">
@@ -115,6 +136,21 @@ export default function StaffDeliveries() {
           </tbody>
         </table>
       </div>
+
+      <Modal
+        open={Boolean(previewUrl)}
+        onClose={() => setPreviewUrl('')}
+        title="Payment receipt"
+        wide
+      >
+        {previewUrl && (
+          <img
+            src={previewUrl}
+            alt="Payment receipt full size"
+            className="mx-auto max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
+          />
+        )}
+      </Modal>
     </>
   );
 }

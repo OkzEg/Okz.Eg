@@ -44,4 +44,36 @@ const uploadSiteAsset = [
   },
 ];
 
-module.exports = { uploadSiteAsset };
+const uploadPaymentReceipt = [
+  upload.single('image'),
+  async (req, res) => {
+    try {
+      if (!isCloudinaryConfigured()) {
+        return res.status(503).json({
+          message: 'Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME, API_KEY, API_SECRET.',
+        });
+      }
+      if (!req.file && !req.body.imageData) {
+        return res.status(400).json({ message: 'No receipt image provided' });
+      }
+
+      let dataUri = req.body.imageData;
+      if (req.file) {
+        if (!String(req.file.mimetype || '').startsWith('image/')) {
+          return res.status(400).json({ message: 'Receipt must be an image' });
+        }
+        const b64 = req.file.buffer.toString('base64');
+        dataUri = `data:${req.file.mimetype};base64,${b64}`;
+      } else if (!String(dataUri).startsWith('data:image/')) {
+        return res.status(400).json({ message: 'Receipt must be an image' });
+      }
+
+      const { url } = await uploadImage(dataUri, 'okz/receipts');
+      res.status(201).json({ url });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+];
+
+module.exports = { uploadSiteAsset, uploadPaymentReceipt };

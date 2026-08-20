@@ -1,10 +1,12 @@
 const prisma = require('../lib/prisma');
 const cache = require('../lib/cache');
 const { getAvailableStock } = require('./productController');
+const { uploadImage, isCloudinaryConfigured } = require('../utils/cloudinary');
 
 const FREE_SHIPPING_MIN = 3000;
 const SHIPPING_FEE_CAIRO_GIZA = 80;
 const SHIPPING_FEE_OTHER = 110;
+const DIGITAL_PAYMENT_METHODS = new Set(['InstaPay', 'Vodafone Cash']);
 
 const effectivePrice = (product) => {
   if (product.isSaleActive && product.salePrice != null) {
@@ -121,12 +123,46 @@ const resolveCoupon = async (couponCode, itemsPrice) => {
   return { discountAmount, couponId, savedCouponCode };
 };
 
+const requiresPaymentReceipt = (paymentMethod) =>
+  DIGITAL_PAYMENT_METHODS.has(String(paymentMethod || '').trim());
+
+const resolvePaymentReceiptUrl = async ({ paymentMethod, paymentReceiptUrl, paymentReceiptData }) => {
+  if (!requiresPaymentReceipt(paymentMethod)) {
+    return null;
+  }
+
+  let url = String(paymentReceiptUrl || '').trim();
+  if (!url && paymentReceiptData) {
+    if (!isCloudinaryConfigured()) {
+      const err = new Error('Payment receipt upload is temporarily unavailable');
+      err.status = 503;
+      throw err;
+    }
+    if (!String(paymentReceiptData).startsWith('data:image/')) {
+      const err = new Error('Payment receipt must be an image');
+      err.status = 400;
+      throw err;
+    }
+    const uploaded = await uploadImage(paymentReceiptData, 'okz/receipts');
+    url = uploaded.url;
+  }
+
+  if (!url || !/^https?:\/\//i.test(url)) {
+    const err = new Error('Upload a transaction receipt screenshot before placing this order');
+    err.status = 400;
+    throw err;
+  }
+
+  return url;
+};
+
 const persistOrder = async ({
   userId = null,
   guestName = null,
   guestPhone = null,
   guestEmail = null,
   paymentMethod,
+  paymentReceiptUrl = null,
   shippingAddress,
   itemsData,
   itemsPrice,
@@ -176,6 +212,7 @@ const persistOrder = async ({
         guestPhone,
         guestEmail,
         paymentMethod,
+        paymentReceiptUrl,
         shippingAddress,
         itemsPrice,
         shippingPrice,
@@ -203,7 +240,14 @@ const createOrder = async (req, res) => {
       return res.status(403).json({ message: 'Only customers can place orders' });
     }
 
-    const { orderItems, paymentMethod, shippingAddress, couponCode } = req.body;
+    const {
+      orderItems,
+      paymentMethod,
+      shippingAddress,
+      couponCode,
+      paymentReceiptUrl,
+      paymentReceiptData,
+    } = req.body;
     if (!paymentMethod || !shippingAddress) {
       return res.status(400).json({ message: 'Payment method and shipping address required' });
     }
@@ -212,6 +256,12 @@ const createOrder = async (req, res) => {
     } catch (err) {
       return res.status(err.status).json({ message: err.message });
     }
+
+    const receiptUrl = await resolvePaymentReceiptUrl({
+      paymentMethod,
+      paymentReceiptUrl,
+      paymentReceiptData,
+    });
 
     const { itemsPrice, itemsData } = await buildOrderItems(orderItems);
     const { discountAmount, couponId, savedCouponCode } = await resolveCoupon(
@@ -224,6 +274,7 @@ const createOrder = async (req, res) => {
     const order = await persistOrder({
       userId: req.user.id,
       paymentMethod,
+      paymentReceiptUrl: receiptUrl,
       shippingAddress,
       itemsData,
       itemsPrice,
@@ -254,6 +305,8 @@ const createGuestOrder = async (req, res) => {
       guestName,
       guestPhone,
       guestEmail,
+      paymentReceiptUrl,
+      paymentReceiptData,
     } = req.body;
 
     const name = String(guestName || '').trim();
@@ -275,6 +328,12 @@ const createGuestOrder = async (req, res) => {
       return res.status(err.status).json({ message: err.message });
     }
 
+    const receiptUrl = await resolvePaymentReceiptUrl({
+      paymentMethod,
+      paymentReceiptUrl,
+      paymentReceiptData,
+    });
+
     const { itemsPrice, itemsData } = await buildOrderItems(orderItems);
     const { discountAmount, couponId, savedCouponCode } = await resolveCoupon(
       couponCode,
@@ -289,6 +348,7 @@ const createGuestOrder = async (req, res) => {
       guestPhone: phone,
       guestEmail: email,
       paymentMethod,
+      paymentReceiptUrl: receiptUrl,
       shippingAddress,
       itemsData,
       itemsPrice,

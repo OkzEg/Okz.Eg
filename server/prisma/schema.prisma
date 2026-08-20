@@ -126,12 +126,13 @@ model Order {
   guestPhone      String?
   guestEmail      String?
   status          OrderStatus @default(pending)
-  paymentMethod   String
-  shippingAddress Json
-  itemsPrice      Decimal     @db.Decimal(10, 2)
-  shippingPrice   Decimal     @db.Decimal(10, 2) @default(0)
-  discountAmount  Decimal     @db.Decimal(10, 2) @default(0)
-  totalPrice      Decimal     @db.Decimal(10, 2)
+  paymentMethod     String
+  paymentReceiptUrl String?
+  shippingAddress   Json
+  itemsPrice        Decimal     @db.Decimal(10, 2)
+  shippingPrice     Decimal     @db.Decimal(10, 2) @default(0)
+  discountAmount    Decimal     @db.Decimal(10, 2) @default(0)
+  totalPrice        Decimal     @db.Decimal(10, 2)
   couponId        String?
   couponCode      String?
   isPaid          Boolean     @default(false)

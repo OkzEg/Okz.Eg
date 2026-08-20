@@ -80,14 +80,18 @@ export const PAYMENT_METHODS = [
   {
     value: 'InstaPay',
     label: 'InstaPay',
-    hint: 'Transfer via InstaPay after placing your order. We’ll confirm once received.',
+    hint: 'Transfer via InstaPay, then upload your transaction receipt before placing the order.',
   },
   {
     value: 'Vodafone Cash',
     label: 'Vodafone Cash',
-    hint: 'Transfer via Vodafone Cash after placing your order. We’ll confirm once received.',
+    hint: 'Transfer via Vodafone Cash, then upload your transaction receipt before placing the order.',
   },
 ];
+
+export const DIGITAL_PAYMENT_METHODS = ['InstaPay', 'Vodafone Cash'];
+
+export const isDigitalPayment = (method) => DIGITAL_PAYMENT_METHODS.includes(method);
 
 export const INSTAPAY_HANDLE = import.meta.env.VITE_INSTAPAY_HANDLE || '';
 export const VODAFONE_CASH_NUMBER = import.meta.env.VITE_VODAFONE_CASH_NUMBER || '';

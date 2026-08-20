@@ -35,40 +35,42 @@ function CollectionList({
           {rows.map((p) => (
             <li
               key={p.id}
-              className="flex items-center gap-3 rounded-lg border border-timber-100 bg-cream/40 p-2"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-timber-100 bg-cream/40 p-2 sm:gap-3"
             >
               <img
                 src={getImageUrl(p.photos?.[0])}
                 alt=""
                 className="h-12 w-12 rounded object-cover bg-timber-100"
               />
-              <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-              <label className="flex items-center gap-2 text-xs text-timber-500">
-                Order
-                <input
-                  type="number"
-                  className="input !w-16 !py-1.5"
-                  defaultValue={p[orderKey] ?? 0}
-                  key={`${p.id}-${p[orderKey]}`}
-                  onBlur={(e) => onOrder(p.id, e.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                className="btn-ghost btn-sm text-red-600"
-                onClick={() => onRemove(p.id)}
-                aria-label={`Remove ${p.name}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <span className="min-w-0 flex-1 truncate font-medium text-sm sm:text-base">{p.name}</span>
+              <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+                <label className="flex items-center gap-2 text-xs text-timber-500">
+                  Order
+                  <input
+                    type="number"
+                    className="input !w-16 !py-1.5"
+                    defaultValue={p[orderKey] ?? 0}
+                    key={`${p.id}-${p[orderKey]}`}
+                    onBlur={(e) => onOrder(p.id, e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm text-red-600"
+                  onClick={() => onRemove(p.id)}
+                  aria-label={`Remove ${p.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <select
-          className="input flex-1"
+          className="input flex-1 min-w-0"
           value={pick}
           onChange={(e) => setPick(e.target.value)}
         >
@@ -81,7 +83,7 @@ function CollectionList({
         </select>
         <button
           type="button"
-          className="btn-wheat btn-sm whitespace-nowrap"
+          className="btn-wheat btn-sm w-full whitespace-nowrap sm:w-auto"
           disabled={!pick}
           onClick={() => {
             onAdd(pick);
@@ -179,15 +181,15 @@ export default function StaffHomepage() {
           {shopRows.map((p) => (
             <li
               key={p.id}
-              className="flex items-center gap-3 rounded-lg border border-timber-100 bg-cream/40 p-2"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-timber-100 bg-cream/40 p-2 sm:gap-3"
             >
               <img
                 src={getImageUrl(p.photos?.[0])}
                 alt=""
                 className="h-12 w-12 rounded object-cover bg-timber-100"
               />
-              <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-              <label className="flex items-center gap-2 text-xs text-timber-500">
+              <span className="min-w-0 flex-1 truncate font-medium text-sm sm:text-base">{p.name}</span>
+              <label className="ms-auto flex items-center gap-2 text-xs text-timber-500">
                 Order
                 <input
                   type="number"

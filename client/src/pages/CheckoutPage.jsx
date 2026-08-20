@@ -116,8 +116,8 @@ export default function CheckoutPage() {
   if (!items.length && !orderPlacedRef.current) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
-      <h1 className="font-display text-5xl text-timber-900 tracking-wide mb-8">Checkout</h1>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <h1 className="font-display text-4xl text-timber-900 tracking-wide mb-6 sm:mb-8 sm:text-5xl">Checkout</h1>
 
       <form onSubmit={submit} className="grid lg:grid-cols-5 gap-8">
         <div className="lg:col-span-3 space-y-4">
@@ -125,8 +125,8 @@ export default function CheckoutPage() {
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-timber-700">
               Contact
             </h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
                 <label className="label">Full name</label>
                 <input required className="input" value={form.name} onChange={set('name')} />
               </div>

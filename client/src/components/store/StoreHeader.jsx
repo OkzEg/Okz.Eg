@@ -59,11 +59,14 @@ export default function StoreHeader() {
             : 'bg-transparent'
         }`}
       >
-        <div className="bg-timber-800 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-cream px-4 py-2">
-          Free shipping over EGP 3,000 · COD · InstaPay · Vodafone Cash
+        <div className="bg-timber-800 px-3 py-2 text-center text-[10px] font-medium uppercase leading-snug tracking-[0.12em] text-cream sm:px-4 sm:text-[11px] sm:tracking-[0.18em]">
+          <span className="sm:hidden">Free shipping over EGP 3,000 · COD</span>
+          <span className="hidden sm:inline">
+            Free shipping over EGP 3,000 · COD · InstaPay · Vodafone Cash
+          </span>
         </div>
-        <div className="relative mx-auto flex h-[88px] sm:h-[96px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
-          <div className="relative z-10 shrink-0">
+        <div className="relative mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-2 px-4 sm:h-[96px] sm:gap-4 sm:px-8">
+          <div className="relative z-10 max-w-[42%] shrink-0 sm:max-w-none">
             <BrandLogo
               size="header"
               className="transition-[filter] duration-300"
@@ -92,11 +95,11 @@ export default function StoreHeader() {
             ))}
           </nav>
 
-          <div className="relative z-10 flex items-center gap-2 sm:gap-3">
+          <div className="relative z-10 flex items-center gap-1 sm:gap-3">
             <Link
               to="/wishlist"
               aria-label="Wishlist"
-              className={`relative grid h-11 w-11 place-items-center rounded-full transition ${
+              className={`relative grid h-10 w-10 place-items-center rounded-full transition sm:h-11 sm:w-11 ${
                 solid
                   ? 'text-timber-700 hover:bg-timber-100'
                   : 'text-white hover:bg-white/10'
@@ -112,7 +115,7 @@ export default function StoreHeader() {
             <Link
               to="/cart"
               aria-label="Cart"
-              className={`relative grid h-11 w-11 place-items-center rounded-full transition ${
+              className={`relative grid h-10 w-10 place-items-center rounded-full transition sm:h-11 sm:w-11 ${
                 solid
                   ? 'text-timber-700 hover:bg-timber-100'
                   : 'text-white hover:bg-white/10'
@@ -197,8 +200,8 @@ export default function StoreHeader() {
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute end-0 top-0 flex h-full w-[min(100%,360px)] flex-col bg-cream shadow-2xl">
-            <div className="flex h-[72px] items-center justify-between border-b border-timber-100 px-5">
+          <div className="absolute end-0 top-0 flex h-full w-[min(100%,20rem)] flex-col bg-cream shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+            <div className="flex h-16 items-center justify-between border-b border-timber-100 px-4 sm:h-[72px] sm:px-5">
               <BrandLogo size="md" to="/" />
               <button
                 type="button"

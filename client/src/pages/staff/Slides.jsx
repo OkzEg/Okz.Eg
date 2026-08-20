@@ -136,7 +136,7 @@ export default function StaffSlides() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="page-title">Slideshow</h1>
           <p className="page-subtitle">
@@ -149,7 +149,7 @@ export default function StaffSlides() {
             )}
           </p>
         </div>
-        <button type="button" className="btn-wheat" onClick={openCreate}>
+        <button type="button" className="btn-wheat w-full sm:w-auto" onClick={openCreate}>
           Add slide
         </button>
       </div>

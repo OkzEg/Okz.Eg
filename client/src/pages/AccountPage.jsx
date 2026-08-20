@@ -52,9 +52,9 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-10">
-      <h1 className="font-display text-5xl tracking-wide">Account</h1>
-      <form onSubmit={save} className="card grid md:grid-cols-2 gap-4">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8 sm:space-y-10">
+      <h1 className="font-display text-4xl tracking-wide sm:text-5xl">Account</h1>
+      <form onSubmit={save} className="card grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label">Name</label>
           <input
@@ -93,15 +93,15 @@ export default function AccountPage() {
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="sm:col-span-2">
           <AddressFields
             idPrefix="account"
             values={form}
             onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))}
           />
         </div>
-        <div className="md:col-span-2">
-          <button type="submit" className="btn-wheat">Save changes</button>
+        <div className="sm:col-span-2">
+          <button type="submit" className="btn-wheat w-full sm:w-auto">Save changes</button>
         </div>
       </form>
 

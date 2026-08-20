@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import Sidebar from './Sidebar';
+import Sidebar, { StaffTopBar } from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess, defaultStaffPage, isStaff } from '../../utils/permissions';
 
 export default function StaffLayout({ children, page }) {
   const { user } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!user) return <Navigate to="/login" replace />;
   if (!isStaff(user)) return <Navigate to="/" replace />;
@@ -14,8 +16,11 @@ export default function StaffLayout({ children, page }) {
 
   return (
     <div className="min-h-screen bg-timber-50">
-      <Sidebar />
-      <main className="ml-64 p-6 md:p-8 min-h-screen">{children}</main>
+      <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <div className="lg:ml-64 min-h-screen flex flex-col">
+        <StaffTopBar onMenu={() => setMobileOpen(true)} />
+        <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-x-hidden">{children}</main>
+      </div>
     </div>
   );
 }

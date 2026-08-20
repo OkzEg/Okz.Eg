@@ -14,7 +14,7 @@ export default function ContactPage() {
     <div className="bg-[#faf8f4]">
       <section className="mx-auto max-w-3xl px-5 py-14 sm:px-8 sm:py-20">
         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-wheat">Contact</p>
-        <h1 className="mt-3 font-display text-5xl tracking-wide text-timber-900 sm:text-6xl">
+        <h1 className="mt-3 font-display text-4xl tracking-wide text-timber-900 sm:text-6xl">
           Let’s talk
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-timber-500 sm:text-lg">
@@ -62,7 +62,7 @@ export default function ContactPage() {
             <Truck className="h-5 w-5 text-wheat" />
             <h2 className="mt-3 font-display text-2xl tracking-wide text-timber-900">Delivery</h2>
             <p className="mt-2 text-sm text-timber-500">
-              Orders ship in 2–3 business days after confirmation. Free shipping over EGP 2,000.
+              Orders ship in 2–3 business days after confirmation. Free shipping over EGP 3,000.
             </p>
           </div>
           <div className="rounded-2xl border border-timber-100 bg-white/80 p-5">

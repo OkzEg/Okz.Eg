@@ -14,10 +14,10 @@ export default function OrderPage() {
   if (!order) return <div className="max-w-3xl mx-auto px-4 py-16 text-timber-500">Loading…</div>;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl tracking-wide">Order #{order.id.slice(0, 8)}</h1>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-3xl tracking-wide sm:text-4xl">Order #{order.id.slice(0, 8)}</h1>
           <p className="text-sm text-timber-500 mt-1">
             {new Date(order.createdAt).toLocaleString()}
           </p>

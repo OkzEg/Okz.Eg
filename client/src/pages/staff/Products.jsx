@@ -272,14 +272,14 @@ export default function StaffProducts() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="page-title">Products</h1>
           <p className="page-subtitle">
             Manage catalog, homepage collections, and shop order
           </p>
         </div>
-        <button type="button" className="btn-wheat" onClick={openCreate}>
+        <button type="button" className="btn-wheat w-full sm:w-auto" onClick={openCreate}>
           Add product
         </button>
       </div>

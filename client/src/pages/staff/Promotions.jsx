@@ -35,12 +35,12 @@ export default function StaffPromotions() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="page-title">Promotions</h1>
           <p className="page-subtitle">Promo codes — product sales are toggled on the Products page</p>
         </div>
-        <button type="button" className="btn-wheat" onClick={() => setOpen(true)}>Add coupon</button>
+        <button type="button" className="btn-wheat w-full sm:w-auto" onClick={() => setOpen(true)}>Add coupon</button>
       </div>
 
       <div className="table-wrapper">

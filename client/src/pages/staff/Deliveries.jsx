@@ -50,12 +50,12 @@ export default function StaffDeliveries() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between mb-6">
         <div>
           <h1 className="page-title">Deliveries</h1>
           <p className="page-subtitle">Track and advance order fulfillment</p>
         </div>
-        <select className="input w-48" value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <select className="input w-full sm:w-48" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All statuses</option>
           {Object.keys(orderStatusLabel).map((s) => (
             <option key={s} value={s}>{orderStatusLabel[s]}</option>

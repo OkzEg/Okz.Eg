@@ -86,7 +86,7 @@ export default function StaffDashboard() {
       )}
 
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="font-semibold text-lg">Recent orders</h2>
           <Link to="/staff/deliveries" className="btn-outline btn-sm">View deliveries</Link>
         </div>

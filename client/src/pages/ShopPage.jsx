@@ -453,7 +453,7 @@ export default function ShopPage() {
       {mobileFilters && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-timber-900/40" onClick={() => setMobileFilters(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-[min(100%,360px)] flex-col bg-[#f7f4ef] p-4 shadow-2xl">
+          <div className="absolute inset-y-0 left-0 flex w-[min(100%,360px)] flex-col bg-[#f7f4ef] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
               <span className="font-semibold text-timber-800">Filters</span>
               <button type="button" className="rounded-full p-2 hover:bg-white" onClick={() => setMobileFilters(false)}>

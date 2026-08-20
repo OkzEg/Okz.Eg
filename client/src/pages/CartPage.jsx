@@ -32,9 +32,9 @@ export default function CartPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="font-display text-5xl text-timber-900 tracking-wide">Cart</h1>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
+        <h1 className="font-display text-4xl text-timber-900 tracking-wide sm:text-5xl">Cart</h1>
         <Link to="/shop" className="text-xs font-bold uppercase tracking-[0.16em] text-timber-500 hover:text-wheat">
           Continue shopping
         </Link>
@@ -45,19 +45,20 @@ export default function CartPage() {
           {items.map((item) => (
             <div
               key={`${item.productId}-${item.color}-${item.size}`}
-              className="card flex gap-4 items-center !p-4"
+              className="card flex flex-col gap-3 !p-3 sm:flex-row sm:items-center sm:gap-4 sm:!p-4"
             >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
               <Link to={`/product/${item.productId}`} className="shrink-0">
                 <img
                   src={getImageUrl(item.image)}
                   alt=""
-                  className="w-20 h-20 rounded-lg object-contain object-center bg-timber-100"
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-contain object-center bg-timber-100"
                 />
               </Link>
               <div className="flex-1 min-w-0">
                 <Link
                   to={`/product/${item.productId}`}
-                  className="font-semibold truncate block hover:text-wheat"
+                  className="font-semibold truncate block hover:text-wheat text-sm sm:text-base"
                 >
                   {item.name}
                 </Link>
@@ -66,6 +67,8 @@ export default function CartPage() {
                 </p>
                 <p className="font-medium mt-1">{formatMoney(item.price)}</p>
               </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
               <div className="inline-flex items-center rounded-xl border border-timber-200 bg-white">
                 <button
                   type="button"
@@ -100,6 +103,7 @@ export default function CartPage() {
               >
                 <Trash2 className="h-4 w-4" />
               </button>
+              </div>
             </div>
           ))}
         </div>

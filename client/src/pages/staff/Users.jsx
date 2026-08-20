@@ -32,12 +32,12 @@ export default function StaffUsers() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="page-title">Staff users</h1>
           <p className="page-subtitle">Create Admin and Ops accounts</p>
         </div>
-        <button type="button" className="btn-wheat" onClick={() => setOpen(true)}>Add user</button>
+        <button type="button" className="btn-wheat w-full sm:w-auto" onClick={() => setOpen(true)}>Add user</button>
       </div>
 
       <div className="table-wrapper">

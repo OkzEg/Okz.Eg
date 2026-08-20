@@ -5,7 +5,7 @@ const SIZES = {
   md: 'h-12',
   lg: 'h-16',
   xl: 'h-20',
-  header: 'h-[3.75rem] sm:h-[4.75rem]',
+  header: 'h-12 sm:h-[4.75rem]',
 };
 
 /** OKZ wordmark — transparent PNG. */

@@ -67,11 +67,11 @@ export default function HomePage() {
       <HeroSlideshow />
 
       {showBest && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
-          <div className="flex items-end justify-between mb-8">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
             <div>
-              <h2 className="font-display text-4xl text-timber-900 tracking-wide">Best sellers</h2>
-              <p className="text-timber-500 mt-1">The pieces customers keep coming back for</p>
+              <h2 className="font-display text-3xl text-timber-900 tracking-wide sm:text-4xl">Best sellers</h2>
+              <p className="text-timber-500 mt-1 text-sm sm:text-base">The pieces customers keep coming back for</p>
             </div>
             <Link to="/shop" className="btn-outline btn-sm">
               View all
@@ -82,11 +82,11 @@ export default function HomePage() {
       )}
 
       {showOurs && (
-        <section className={`max-w-7xl mx-auto px-4 sm:px-6 ${showBest ? 'pb-16' : 'py-16'}`}>
-          <div className="flex items-end justify-between mb-8">
+        <section className={`max-w-7xl mx-auto px-4 sm:px-6 ${showBest ? 'pb-10 sm:pb-16' : 'py-10 sm:py-16'}`}>
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
             <div>
-              <h2 className="font-display text-4xl text-timber-900 tracking-wide">New collection</h2>
-              <p className="text-timber-500 mt-1">Fresh pieces just added to the floor</p>
+              <h2 className="font-display text-3xl text-timber-900 tracking-wide sm:text-4xl">New collection</h2>
+              <p className="text-timber-500 mt-1 text-sm sm:text-base">Fresh pieces just added to the floor</p>
             </div>
             <Link to="/shop" className="btn-outline btn-sm">
               Shop all

@@ -113,9 +113,9 @@ function StoreShell({ children }) {
     ['/login', '/signup'].includes(location.pathname) || isStaffRoute;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       {!hideChrome && <StoreHeader />}
-      <div className="flex-1">
+      <div className="flex-1 w-full min-w-0">
         <Suspense fallback={<PageLoader />}>{children}</Suspense>
       </div>
       {!hideChrome && <StoreFooter />}

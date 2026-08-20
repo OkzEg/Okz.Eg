@@ -37,12 +37,12 @@ export default function StaffProblems() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="page-title">Problem requests</h1>
           <p className="page-subtitle">Issues with deliveries or customers</p>
         </div>
-        <button type="button" className="btn-wheat" onClick={() => setOpen(true)}>New request</button>
+        <button type="button" className="btn-wheat w-full sm:w-auto" onClick={() => setOpen(true)}>New request</button>
       </div>
 
       <div className="table-wrapper">

@@ -185,7 +185,7 @@ export default function ProductPage() {
     setOpenSection((current) => (current === key ? '' : key));
 
   return (
-    <div className="bg-[#faf8f4] pb-24 lg:pb-0">
+    <div className="bg-[#faf8f4] pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
         <nav className="mb-6 text-xs uppercase tracking-wider text-timber-400">
           <Link to="/shop" className="hover:text-timber-700">
@@ -489,7 +489,7 @@ export default function ProductPage() {
                 </p>
                 <p className="mt-2 text-timber-500">
                   Cash on delivery, InstaPay, and Vodafone Cash available at checkout. Free shipping on
-                  orders over EGP 2,000.
+                  orders over EGP 3,000.
                 </p>
               </Accordion>
             </div>
@@ -500,7 +500,7 @@ export default function ProductPage() {
       </div>
 
       {/* Mobile sticky ATC */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-timber-200 bg-cream/95 px-4 py-3 backdrop-blur-md lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-timber-200 bg-cream/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:px-4 lg:hidden">
         <div className="mx-auto flex max-w-7xl items-center gap-2">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-timber-900">{product.name}</p>
@@ -508,17 +508,17 @@ export default function ProductPage() {
           </div>
           <button
             type="button"
-            className="btn-outline shrink-0 px-3 py-3 text-xs font-bold uppercase tracking-[0.12em]"
+            className="btn-outline shrink-0 px-2.5 py-3 text-xs font-bold uppercase tracking-[0.12em] sm:px-3"
             onClick={() => add(false)}
             disabled={!canAdd}
             aria-label="Add to cart"
           >
             <ShoppingCart className="h-4 w-4" />
-            Cart
+            <span className="hidden sm:inline">Cart</span>
           </button>
           <button
             type="button"
-            className="btn-wheat shrink-0 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em]"
+            className="btn-wheat shrink-0 px-3 py-3 text-xs font-bold uppercase tracking-[0.12em] sm:px-4"
             onClick={() => add(true)}
             disabled={!canAdd}
           >

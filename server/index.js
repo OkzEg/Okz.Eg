@@ -1,6 +1,7 @@
 const app = require('./app');
 const prisma = require('./lib/prisma');
 
+// Deploy ping — keep env SMTP_* configured for order emails
 const PORT = process.env.PORT || 5000;
 const MAX_DB_ATTEMPTS = 5;
 

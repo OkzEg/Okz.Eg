@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma');
 const cache = require('../lib/cache');
 const { getAvailableStock } = require('./productController');
 const { uploadImage, isCloudinaryConfigured } = require('../utils/cloudinary');
+const { sendOrderConfirmationEmail } = require('../utils/mail');
 
 const FREE_SHIPPING_MIN = 3000;
 const SHIPPING_FEE_CAIRO_GIZA = 80;
@@ -319,7 +320,9 @@ const createOrder = async (req, res) => {
       savedCouponCode,
     });
 
-    res.status(201).json(serializeOrder(order));
+    const payload = serializeOrder(order);
+    sendOrderConfirmationEmail(payload).catch(() => {});
+    res.status(201).json(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     if (error.message?.startsWith('Insufficient stock')) {
@@ -393,7 +396,9 @@ const createGuestOrder = async (req, res) => {
       savedCouponCode,
     });
 
-    res.status(201).json(serializeOrder(order));
+    const payload = serializeOrder(order);
+    sendOrderConfirmationEmail(payload).catch(() => {});
+    res.status(201).json(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     if (error.message?.startsWith('Insufficient stock')) {

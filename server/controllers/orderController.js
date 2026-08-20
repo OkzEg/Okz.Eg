@@ -326,7 +326,7 @@ const createOrder = async (req, res) => {
     });
 
     const payload = serializeOrder(order);
-    sendOrderConfirmationEmail(payload).catch(() => {});
+    await sendOrderConfirmationEmail(payload);
     res.status(201).json(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
@@ -402,7 +402,7 @@ const createGuestOrder = async (req, res) => {
     });
 
     const payload = serializeOrder(order);
-    sendOrderConfirmationEmail(payload).catch(() => {});
+    await sendOrderConfirmationEmail(payload);
     res.status(201).json(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { MessageCircle, Phone, Truck } from 'lucide-react';
+import { Mail, MessageCircle, Phone, Truck } from 'lucide-react';
 
+const HELP_EMAIL = 'okzeg3@gmail.com';
 const WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || '';
 const PHONE = import.meta.env.VITE_CONTACT_PHONE || '';
 
@@ -23,6 +24,16 @@ export default function ContactPage() {
         </p>
 
         <div className="mt-10 space-y-3">
+          <a
+            href={`mailto:${HELP_EMAIL}`}
+            className="flex min-h-14 items-center gap-4 rounded-2xl border border-timber-200 bg-white px-5 py-4 transition hover:border-wheat"
+          >
+            <Mail className="h-5 w-5 shrink-0 text-wheat" />
+            <span>
+              <span className="block text-sm font-semibold text-timber-800">Email</span>
+              <span className="text-sm text-timber-500">{HELP_EMAIL}</span>
+            </span>
+          </a>
           {whatsappHref && (
             <a
               href={whatsappHref}
@@ -48,12 +59,6 @@ export default function ContactPage() {
                 <span className="text-sm text-timber-500">{PHONE}</span>
               </span>
             </a>
-          )}
-          {!whatsappHref && !phoneHref && (
-            <div className="rounded-2xl border border-timber-200 bg-white px-5 py-5 text-sm text-timber-600">
-              Place an order and we’ll contact you on the phone number you provide at checkout.
-              Staff can also add WhatsApp/phone via env vars later.
-            </div>
           )}
         </div>
 

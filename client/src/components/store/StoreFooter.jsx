@@ -28,6 +28,12 @@ export default function StoreFooter() {
           <div>
             <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-white">Help</h4>
             <div className="space-y-2.5 text-sm">
+              <a
+                href="mailto:okzeg3@gmail.com"
+                className="block min-h-10 py-1 hover:text-wheat"
+              >
+                okzeg3@gmail.com
+              </a>
               <Link to="/returns" className="block min-h-10 py-1 hover:text-wheat">Returns</Link>
               <Link to="/privacy" className="block min-h-10 py-1 hover:text-wheat">Privacy</Link>
               <Link to="/terms" className="block min-h-10 py-1 hover:text-wheat">Terms</Link>

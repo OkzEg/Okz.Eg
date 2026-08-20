@@ -205,12 +205,15 @@ const persistOrder = async ({
       }
     }
 
+    const initialStatus = requiresPaymentReceipt(paymentMethod) ? 'pending' : 'confirmed';
+
     return tx.order.create({
       data: {
         userId,
         guestName,
         guestPhone,
         guestEmail,
+        status: initialStatus,
         paymentMethod,
         paymentReceiptUrl,
         shippingAddress,
@@ -449,9 +452,27 @@ const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
+    const existing = await prisma.order.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, status: true, paymentMethod: true, isPaid: true },
+    });
+    if (!existing) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
     const data = { status };
     if (status === 'delivered') {
       data.deliveredAt = new Date();
+      data.isPaid = true;
+      data.paidAt = new Date();
+    }
+
+    // Admin confirming a digital-wallet transfer (InstaPay / Vodafone Cash)
+    if (
+      status === 'confirmed' &&
+      existing.status === 'pending' &&
+      requiresPaymentReceipt(existing.paymentMethod)
+    ) {
       data.isPaid = true;
       data.paidAt = new Date();
     }

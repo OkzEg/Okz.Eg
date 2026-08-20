@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Trash2 } from 'lucide-react';
+import { CheckCircle2, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
-import { formatMoney, orderStatusBadge, orderStatusLabel } from '../../utils/helpers';
+import {
+  formatMoney,
+  isDigitalPayment,
+  orderStatusBadge,
+  orderStatusLabel,
+} from '../../utils/helpers';
 
 export default function StaffOrders() {
   const [orders, setOrders] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
 
   const load = () => api.get('/orders').then((r) => setOrders(r.data));
@@ -15,6 +21,19 @@ export default function StaffOrders() {
   useEffect(() => {
     load();
   }, []);
+
+  const confirmPayment = async (order) => {
+    setConfirmingId(order.id);
+    try {
+      const { data } = await api.patch(`/orders/${order.id}/status`, { status: 'confirmed' });
+      setOrders((prev) => prev.map((o) => (o.id === order.id ? data : o)));
+      toast.success('Payment confirmed');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not confirm payment');
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const remove = async (order) => {
     const label = order.id.slice(0, 8);
@@ -35,7 +54,10 @@ export default function StaffOrders() {
     <>
       <div className="mb-6">
         <h1 className="page-title">Orders</h1>
-        <p className="page-subtitle">Full order list — delete removes the order and related records</p>
+        <p className="page-subtitle">
+          Cash orders confirm automatically. InstaPay / Vodafone Cash stay pending until you confirm
+          payment.
+        </p>
       </div>
       <div className="table-wrapper">
         <table className="table">
@@ -53,46 +75,68 @@ export default function StaffOrders() {
             </tr>
           </thead>
           <tbody>
-            {orders.map((o) => (
-              <tr key={o.id}>
-                <td className="font-mono text-xs">{o.id.slice(0, 8)}</td>
-                <td>{o.customerName || o.user?.name || 'Guest'}</td>
-                <td>{o.items?.length || 0}</td>
-                <td>{formatMoney(o.totalPrice)}</td>
-                <td>{o.paymentMethod}</td>
-                <td>
-                  {o.paymentReceiptUrl ? (
-                    <button
-                      type="button"
-                      className="block rounded-md border border-timber-200 overflow-hidden hover:ring-2 hover:ring-wheat focus:outline-none focus:ring-2 focus:ring-wheat"
-                      onClick={() => setPreviewUrl(o.paymentReceiptUrl)}
-                      title="Preview receipt"
-                    >
-                      <img
-                        src={o.paymentReceiptUrl}
-                        alt="Payment receipt"
-                        className="h-12 w-12 object-cover bg-timber-50"
-                      />
-                    </button>
-                  ) : (
-                    <span className="text-timber-400 text-xs">—</span>
-                  )}
-                </td>
-                <td><span className={orderStatusBadge[o.status]}>{orderStatusLabel[o.status]}</span></td>
-                <td>{new Date(o.createdAt).toLocaleDateString()}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="btn-ghost btn-sm text-red-600 hover:bg-red-50"
-                    title="Delete order"
-                    disabled={deletingId === o.id}
-                    onClick={() => remove(o)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {orders.map((o) => {
+              const needsPaymentConfirm =
+                o.status === 'pending' && isDigitalPayment(o.paymentMethod);
+              return (
+                <tr key={o.id}>
+                  <td className="font-mono text-xs">{o.id.slice(0, 8)}</td>
+                  <td>{o.customerName || o.user?.name || 'Guest'}</td>
+                  <td>{o.items?.length || 0}</td>
+                  <td>{formatMoney(o.totalPrice)}</td>
+                  <td>{o.paymentMethod}</td>
+                  <td>
+                    {o.paymentReceiptUrl ? (
+                      <button
+                        type="button"
+                        className="block rounded-md border border-timber-200 overflow-hidden hover:ring-2 hover:ring-wheat focus:outline-none focus:ring-2 focus:ring-wheat"
+                        onClick={() => setPreviewUrl(o.paymentReceiptUrl)}
+                        title="Preview receipt"
+                      >
+                        <img
+                          src={o.paymentReceiptUrl}
+                          alt="Payment receipt"
+                          className="h-12 w-12 object-cover bg-timber-50"
+                        />
+                      </button>
+                    ) : (
+                      <span className="text-timber-400 text-xs">—</span>
+                    )}
+                  </td>
+                  <td>
+                    <span className={orderStatusBadge[o.status]}>
+                      {orderStatusLabel[o.status]}
+                    </span>
+                  </td>
+                  <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {needsPaymentConfirm && (
+                        <button
+                          type="button"
+                          className="btn-wheat btn-sm"
+                          disabled={confirmingId === o.id}
+                          onClick={() => confirmPayment(o)}
+                          title="Confirm payment received"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          {confirmingId === o.id ? 'Confirming…' : 'Confirm payment'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm text-red-600 hover:bg-red-50"
+                        title="Delete order"
+                        disabled={deletingId === o.id}
+                        onClick={() => remove(o)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {orders.length === 0 && (
               <tr>
                 <td colSpan={9} className="text-center text-timber-400 py-8 text-sm">

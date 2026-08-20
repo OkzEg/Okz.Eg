@@ -154,12 +154,22 @@ export const parseSizes = (value) =>
     .filter(Boolean);
 
 export const orderStatusLabel = {
-  pending: 'Pending',
+  pending: 'Pending payment',
   confirmed: 'Confirmed',
   out_for_delivery: 'Out for delivery',
   delivered: 'Delivered',
   canceled: 'Canceled',
   problem: 'Problem',
+};
+
+/** Customer-facing labels — never expose internal payment-hold wording. */
+export const customerOrderStatusLabel = {
+  pending: 'Order received',
+  confirmed: 'Confirmed',
+  out_for_delivery: 'Out for delivery',
+  delivered: 'Delivered',
+  canceled: 'Canceled',
+  problem: 'In review',
 };
 
 export const orderStatusBadge = {
@@ -169,4 +179,13 @@ export const orderStatusBadge = {
   delivered: 'badge-green',
   canceled: 'badge-gray',
   problem: 'badge-red',
+};
+
+export const customerOrderStatusBadge = {
+  pending: 'badge-blue',
+  confirmed: 'badge-blue',
+  out_for_delivery: 'badge-wheat',
+  delivered: 'badge-green',
+  canceled: 'badge-gray',
+  problem: 'badge-yellow',
 };

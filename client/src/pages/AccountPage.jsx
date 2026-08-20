@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
-import { formatMoney, orderStatusBadge, orderStatusLabel } from '../utils/helpers';
+import { formatMoney, customerOrderStatusBadge, customerOrderStatusLabel } from '../utils/helpers';
 import AddressFields from '../components/store/AddressFields';
 
 export default function AccountPage() {
@@ -129,8 +129,8 @@ export default function AccountPage() {
                     <td>{new Date(o.createdAt).toLocaleDateString()}</td>
                     <td>{formatMoney(o.totalPrice)}</td>
                     <td>
-                      <span className={orderStatusBadge[o.status]}>
-                        {orderStatusLabel[o.status]}
+                      <span className={customerOrderStatusBadge[o.status]}>
+                        {customerOrderStatusLabel[o.status]}
                       </span>
                     </td>
                   </tr>

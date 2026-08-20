@@ -1,10 +1,5 @@
 import { Link, useLocation, Navigate } from 'react-router-dom';
-import {
-  formatMoney,
-  INSTAPAY_HANDLE,
-  INSTAPAY_URL,
-  VODAFONE_CASH_NUMBER,
-} from '../utils/helpers';
+import { formatMoney, INSTAPAY_URL } from '../utils/helpers';
 
 function SuccessMark() {
   return (
@@ -60,10 +55,7 @@ export default function OrderSuccessPage() {
   if (!order) return <Navigate to="/" replace />;
 
   const name = order.customerName || order.guestName;
-  const method = order.paymentMethod;
-  const isInstaPay = method === 'InstaPay';
-  const isVodafone = method === 'Vodafone Cash';
-  const isWallet = isInstaPay || isVodafone;
+  const isInstaPay = order.paymentMethod === 'InstaPay';
 
   return (
     <div className="relative min-h-[70vh] overflow-hidden bg-[#faf8f4]">
@@ -109,40 +101,21 @@ export default function OrderSuccessPage() {
           </div>
         </div>
 
-        {isWallet && (
-          <div className="card mt-4 space-y-3 text-left text-sm">
-            <p className="font-semibold text-timber-800">Payment receipt received</p>
-            <p className="text-timber-600">
-              Thanks — we have your transfer screenshot and will confirm payment when we contact you.
-            </p>
-            {isInstaPay && INSTAPAY_URL && (
-              <a
-                href={INSTAPAY_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-wheat inline-flex w-full sm:w-auto"
-              >
-                Open InstaPay
-              </a>
-            )}
-            {isInstaPay && !INSTAPAY_URL && INSTAPAY_HANDLE ? (
-              <p className="text-timber-600">
-                InstaPay: <span className="font-semibold text-timber-900">{INSTAPAY_HANDLE}</span>
-              </p>
-            ) : null}
-            {isVodafone && VODAFONE_CASH_NUMBER ? (
-              <p className="text-timber-600">
-                Vodafone Cash:{' '}
-                <span className="font-semibold text-timber-900">{VODAFONE_CASH_NUMBER}</span>
-              </p>
-            ) : null}
+        {isInstaPay && INSTAPAY_URL && (
+          <div className="card mt-4 text-left">
+            <a
+              href={INSTAPAY_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-wheat inline-flex w-full sm:w-auto"
+            >
+              Open InstaPay
+            </a>
           </div>
         )}
 
         <p className="mt-6 text-sm text-timber-500">
-          {isWallet
-            ? 'Delivery usually takes 2–3 business days after payment is confirmed.'
-            : 'Delivery usually takes 2–3 business days · Cash on delivery.'}
+          Delivery usually takes 2–3 business days.
         </p>
 
         <div className="mt-8 flex flex-wrap justify-center gap-3">

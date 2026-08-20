@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
-import { formatMoney, getImageUrl, orderStatusBadge, orderStatusLabel } from '../utils/helpers';
+import { formatMoney, getImageUrl, customerOrderStatusBadge, customerOrderStatusLabel } from '../utils/helpers';
 
 export default function OrderPage() {
   const { id } = useParams();
@@ -22,7 +22,9 @@ export default function OrderPage() {
             {new Date(order.createdAt).toLocaleString()}
           </p>
         </div>
-        <span className={orderStatusBadge[order.status]}>{orderStatusLabel[order.status]}</span>
+        <span className={customerOrderStatusBadge[order.status]}>
+          {customerOrderStatusLabel[order.status]}
+        </span>
       </div>
 
       <div className="card space-y-4">

@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { Trash2 } from 'lucide-react';
 import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
-import { formatMoney, orderStatusBadge, orderStatusLabel } from '../../utils/helpers';
+import { formatMoney, isDigitalPayment, orderStatusBadge, orderStatusLabel } from '../../utils/helpers';
 
 const NEXT = {
   pending: ['confirmed', 'canceled'],
@@ -114,10 +114,18 @@ export default function StaffDeliveries() {
                       <button
                         key={s}
                         type="button"
-                        className="btn-outline btn-sm"
+                        className={
+                          s === 'confirmed' && o.status === 'pending' && isDigitalPayment(o.paymentMethod)
+                            ? 'btn-wheat btn-sm'
+                            : 'btn-outline btn-sm'
+                        }
                         onClick={() => setStatus(o.id, s)}
                       >
-                        {orderStatusLabel[s]}
+                        {s === 'confirmed' &&
+                        o.status === 'pending' &&
+                        isDigitalPayment(o.paymentMethod)
+                          ? 'Confirm payment'
+                          : orderStatusLabel[s]}
                       </button>
                     ))}
                     <button

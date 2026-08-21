@@ -8,25 +8,17 @@ const SWIPE_PX = 40;
 
 const srcFor = (slide, width) => optimizeImageUrl(slide?.cloudinaryUrl, { width });
 
-export default function HeroSlideshow() {
-  const [slides, setSlides] = useState([]);
+const isMobilePlacement = (slide) => String(slide?.placement || '').toLowerCase() === 'mobile';
+
+function HeroTrack({ slides, className, defaultRatio, imageWidth }) {
   const [index, setIndex] = useState(0);
   const [ratios, setRatios] = useState({});
   const touchStartX = useRef(null);
   const pauseUntil = useRef(0);
 
   useEffect(() => {
-    let cancelled = false;
-    api
-      .get('/slides')
-      .then((r) => {
-        if (!cancelled) setSlides(Array.isArray(r.data) ? r.data : []);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    setIndex(0);
+  }, [slides]);
 
   useEffect(() => {
     if (slides.length < 2) return undefined;
@@ -40,8 +32,8 @@ export default function HeroSlideshow() {
   const slide = slides[index];
   const placeholderRatio = useMemo(() => {
     const first = slides[0];
-    return getSlideAspectRatio(first) || ratios[first?.id] || 16 / 9;
-  }, [slides, ratios]);
+    return getSlideAspectRatio(first) || ratios[first?.id] || defaultRatio;
+  }, [slides, ratios, defaultRatio]);
 
   const currentRatio = slide
     ? getSlideAspectRatio(slide) || ratios[slide.id] || placeholderRatio
@@ -74,7 +66,7 @@ export default function HeroSlideshow() {
   };
 
   return (
-    <section className="relative w-full overflow-hidden bg-timber-900">
+    <section className={`relative w-full overflow-hidden bg-timber-900 ${className || ''}`}>
       <div
         className="relative w-full min-h-[58svh] sm:min-h-[min(72svh,52rem)]"
         style={{ aspectRatio: currentRatio }}
@@ -87,7 +79,7 @@ export default function HeroSlideshow() {
 
         {slides.map((s, i) => {
           const active = i === index;
-          const src = srcFor(s, 1600);
+          const src = srcFor(s, imageWidth);
           return (
             <img
               key={s.id}
@@ -152,5 +144,51 @@ export default function HeroSlideshow() {
         )}
       </div>
     </section>
+  );
+}
+
+export default function HeroSlideshow() {
+  const [allSlides, setAllSlides] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get('/slides')
+      .then((r) => {
+        if (!cancelled) setAllSlides(Array.isArray(r.data) ? r.data : []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const desktop = useMemo(
+    () => allSlides.filter((s) => !isMobilePlacement(s)),
+    [allSlides]
+  );
+  const mobile = useMemo(
+    () => allSlides.filter((s) => isMobilePlacement(s)),
+    [allSlides]
+  );
+
+  const desktopSlides = desktop.length ? desktop : mobile;
+  const mobileSlides = mobile.length ? mobile : desktop;
+
+  return (
+    <>
+      <HeroTrack
+        slides={desktopSlides}
+        className="hidden md:block"
+        defaultRatio={16 / 9}
+        imageWidth={1600}
+      />
+      <HeroTrack
+        slides={mobileSlides}
+        className="md:hidden"
+        defaultRatio={4 / 5}
+        imageWidth={900}
+      />
+    </>
   );
 }

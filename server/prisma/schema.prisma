@@ -89,6 +89,8 @@ model Slide {
   title         String   @default("New Arrival")
   description   String   @default("Shop the collection")
   sortOrder     Int      @default(0)
+  /// desktop = PC / laptop / tablet (md+). mobile = phones.
+  placement     String   @default("desktop")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

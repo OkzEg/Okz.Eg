@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../api/axios';
 import Modal from '../../components/ui/Modal';
 import { getImageUrl } from '../../utils/helpers';
 
-const emptyForm = { title: '', description: '', imageUrl: '', sortOrder: 0 };
+const emptyForm = { title: '', description: '', imageUrl: '', sortOrder: 0, placement: 'desktop' };
 
 const readFileAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -14,6 +14,17 @@ const readFileAsDataUrl = (file) =>
     reader.onerror = () => reject(new Error('Could not read image file'));
     reader.readAsDataURL(file);
   });
+
+const PLACEMENT_META = {
+  desktop: {
+    title: 'PC, laptop & tablet',
+    hint: 'Wide images for screens 768px and up.',
+  },
+  mobile: {
+    title: 'Phone',
+    hint: 'Tall images for phones. Portrait (4:5 or 9:16) looks best.',
+  },
+};
 
 export default function StaffSlides() {
   const [slides, setSlides] = useState([]);
@@ -35,6 +46,15 @@ export default function StaffSlides() {
     load();
   }, []);
 
+  const desktopSlides = useMemo(
+    () => slides.filter((s) => String(s.placement || 'desktop') !== 'mobile'),
+    [slides]
+  );
+  const mobileSlides = useMemo(
+    () => slides.filter((s) => String(s.placement) === 'mobile'),
+    [slides]
+  );
+
   const onFile = (e) => {
     setFile(e.target.files?.[0] || null);
   };
@@ -45,8 +65,9 @@ export default function StaffSlides() {
     setFile(null);
   };
 
-  const openCreate = () => {
+  const openCreate = (placement = 'desktop') => {
     resetForm();
+    setForm({ ...emptyForm, placement });
     setOpen(true);
   };
 
@@ -57,6 +78,7 @@ export default function StaffSlides() {
       description: slide.description || '',
       imageUrl: '',
       sortOrder: slide.sortOrder ?? 0,
+      placement: slide.placement === 'mobile' ? 'mobile' : 'desktop',
     });
     setFile(null);
     setOpen(true);
@@ -85,6 +107,7 @@ export default function StaffSlides() {
         title: form.title,
         description: form.description,
         sortOrder: Number(form.sortOrder) || 0,
+        placement: form.placement === 'mobile' ? 'mobile' : 'desktop',
       };
 
       if (file) {
@@ -134,50 +157,79 @@ export default function StaffSlides() {
     }
   };
 
+  const renderGroup = (placement, items) => {
+    const meta = PLACEMENT_META[placement];
+    return (
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-display text-2xl text-timber-900 tracking-wide">{meta.title}</h2>
+            <p className="mt-1 text-sm text-timber-500">{meta.hint}</p>
+          </div>
+          <button type="button" className="btn-wheat w-full sm:w-auto" onClick={() => openCreate(placement)}>
+            Add {placement === 'mobile' ? 'phone' : 'desktop'} slide
+          </button>
+        </div>
+        {items.length ? (
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {items.map((s) => (
+              <div key={s.id} className="card !p-0 overflow-hidden">
+                <img
+                  src={getImageUrl(s.cloudinaryUrl)}
+                  alt={s.title}
+                  className={`w-full object-cover ${placement === 'mobile' ? 'h-56' : 'h-40'}`}
+                />
+                <div className="p-4">
+                  <h3 className="font-semibold">{s.title}</h3>
+                  <p className="text-sm text-timber-500 mt-1">{s.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" className="btn-outline btn-sm" onClick={() => openEdit(s)}>
+                      <Pencil className="h-4 w-4" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm text-red-600"
+                      disabled={deletingId === s.id}
+                      onClick={() => remove(s.id)}
+                    >
+                      {deletingId === s.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-timber-200 bg-cream/40 px-4 py-8 text-center text-sm text-timber-500">
+            No {placement === 'mobile' ? 'phone' : 'desktop'} slides yet.
+            {placement === 'mobile'
+              ? ' Phones will keep using the desktop slideshow until you add some.'
+              : ''}
+          </p>
+        )}
+      </section>
+    );
+  };
+
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="page-title">Slideshow</h1>
-          <p className="page-subtitle">
-            Homepage hero images via Cloudinary
-            {!cloudOk && (
-              <span className="text-amber-600">
-                {' '}
-                — Cloudinary not configured; paste a hosted image URL instead of uploading.
-              </span>
-            )}
-          </p>
-        </div>
-        <button type="button" className="btn-wheat w-full sm:w-auto" onClick={openCreate}>
-          Add slide
-        </button>
+      <div className="mb-8">
+        <h1 className="page-title">Slideshow</h1>
+        <p className="page-subtitle">
+          Separate homepage heroes for large screens and phones
+          {!cloudOk && (
+            <span className="text-amber-600">
+              {' '}
+              — Cloudinary not configured; paste a hosted image URL instead of uploading.
+            </span>
+          )}
+        </p>
       </div>
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {slides.map((s) => (
-          <div key={s.id} className="card !p-0 overflow-hidden">
-            <img src={getImageUrl(s.cloudinaryUrl)} alt={s.title} className="h-40 w-full object-cover" />
-            <div className="p-4">
-              <h3 className="font-semibold">{s.title}</h3>
-              <p className="text-sm text-timber-500 mt-1">{s.description}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" className="btn-outline btn-sm" onClick={() => openEdit(s)}>
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost btn-sm text-red-600"
-                  disabled={deletingId === s.id}
-                  onClick={() => remove(s.id)}
-                >
-                  {deletingId === s.id ? 'Deleting…' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="space-y-12">
+        {renderGroup('desktop', desktopSlides)}
+        {renderGroup('mobile', mobileSlides)}
       </div>
 
       <Modal
@@ -189,6 +241,30 @@ export default function StaffSlides() {
         title={editing ? 'Edit slide' : 'New slide'}
       >
         <form onSubmit={save} className="space-y-4">
+          <div>
+            <label className="label">Shows on</label>
+            <div className="grid grid-cols-2 gap-2">
+              {['desktop', 'mobile'].map((value) => (
+                <label
+                  key={value}
+                  className={`flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium ${
+                    form.placement === value
+                      ? 'border-wheat bg-wheat-50 text-timber-900'
+                      : 'border-timber-200 text-timber-600 hover:border-timber-400'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="placement"
+                    className="sr-only"
+                    checked={form.placement === value}
+                    onChange={() => setForm({ ...form, placement: value })}
+                  />
+                  {value === 'desktop' ? 'PC / tablet' : 'Phone'}
+                </label>
+              ))}
+            </div>
+          </div>
           <div>
             <label className="label">Title</label>
             <input

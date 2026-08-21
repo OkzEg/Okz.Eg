@@ -3,10 +3,14 @@ const cache = require('../lib/cache');
 const { uploadImage, isCloudinaryConfigured } = require('../utils/cloudinary');
 
 const SLIDES_TTL_MS = 60_000;
+const PLACEMENTS = new Set(['desktop', 'mobile']);
+
+const normalizePlacement = (value) =>
+  PLACEMENTS.has(String(value || '').toLowerCase()) ? String(value).toLowerCase() : 'desktop';
 
 const slideListQuery = () =>
   prisma.slide.findMany({
-    orderBy: { sortOrder: 'asc' },
+    orderBy: [{ placement: 'asc' }, { sortOrder: 'asc' }],
     select: {
       id: true,
       cloudinaryUrl: true,
@@ -15,6 +19,7 @@ const slideListQuery = () =>
       title: true,
       description: true,
       sortOrder: true,
+      placement: true,
     },
   });
 
@@ -39,7 +44,7 @@ const listSlides = async (req, res) => {
 
 const createSlide = async (req, res) => {
   try {
-    const { title, description, sortOrder, imageUrl, imageData } = req.body;
+    const { title, description, sortOrder, imageUrl, imageData, placement } = req.body;
     let cloudinaryUrl = imageUrl?.trim() || null;
     let width = null;
     let height = null;
@@ -77,6 +82,7 @@ const createSlide = async (req, res) => {
         title: title?.trim() || 'New Arrival',
         description: description?.trim() || 'Shop the collection',
         sortOrder: Number(sortOrder) || 0,
+        placement: normalizePlacement(placement),
       },
     });
     cache.invalidate('slides');
@@ -89,12 +95,13 @@ const createSlide = async (req, res) => {
 
 const updateSlide = async (req, res) => {
   try {
-    const { title, description, sortOrder, imageUrl, imageData } = req.body;
+    const { title, description, sortOrder, imageUrl, imageData, placement } = req.body;
     const data = {};
 
     if (title !== undefined) data.title = String(title).trim() || 'New Arrival';
     if (description !== undefined) data.description = String(description).trim() || 'Shop the collection';
     if (sortOrder !== undefined) data.sortOrder = Number(sortOrder) || 0;
+    if (placement !== undefined) data.placement = normalizePlacement(placement);
 
     if (req.file) {
       if (!isCloudinaryConfigured()) {

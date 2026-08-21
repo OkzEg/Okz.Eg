@@ -38,50 +38,59 @@ function FiltersPanel({
   onToggleSize,
   onClear,
 }) {
+  const chipClass = (active) =>
+    `rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+      active
+        ? 'border-timber-800 bg-timber-800 text-white'
+        : 'border-timber-200 bg-white text-timber-700 hover:border-timber-500'
+    }`;
+
   return (
     <div
       className={
         embedded
-          ? 'flex h-full flex-col'
-          : 'flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-timber-200/80 bg-white p-5 shadow-[0_12px_40px_rgba(61,46,34,0.08)]'
+          ? 'flex flex-col'
+          : 'rounded-2xl border border-timber-200/80 bg-white p-5 shadow-[0_12px_40px_rgba(61,46,34,0.08)]'
       }
     >
-      <div className="mb-5 shrink-0">
-        <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-timber-400">
-          Filters
-        </p>
-        <h2 className="mt-1.5 font-display text-2xl tracking-wide text-timber-800">
-          Find your gear
-        </h2>
-        <p className="mt-1 text-[13px] text-timber-400">Results update as you filter.</p>
-      </div>
+      {!embedded && (
+        <div className="mb-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-timber-400">
+            Filters
+          </p>
+          <h2 className="mt-1.5 font-display text-2xl tracking-wide text-timber-800">
+            Find your gear
+          </h2>
+          <p className="mt-1 text-[13px] text-timber-400">Results update as you filter.</p>
+        </div>
+      )}
 
-      <div className="flex-1 space-y-5 overflow-y-auto pr-1">
-        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+      <div className="space-y-3.5">
+        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3">
+          <label className="mb-2 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
             Category
           </label>
-          <div className="space-y-2.5">
-            {PRODUCT_TYPES.map((t) => (
-              <label
-                key={t.value}
-                className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedTypes.includes(t.value)}
-                  onChange={() => onToggleType(t.value)}
-                  className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
-                />
-                {t.label}
-              </label>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            {PRODUCT_TYPES.map((t) => {
+              const active = selectedTypes.includes(t.value);
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => onToggleType(t.value)}
+                  aria-pressed={active}
+                  className={chipClass(active)}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {availableColors.length > 0 && (
-          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3">
+            <label className="mb-2 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
               Colors
             </label>
             <div className="flex flex-wrap gap-2">
@@ -93,11 +102,7 @@ function FiltersPanel({
                     type="button"
                     onClick={() => onToggleColor(c)}
                     aria-pressed={active}
-                    className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
-                      active
-                        ? 'border-timber-800 bg-timber-800 text-white'
-                        : 'border-timber-200 bg-white text-timber-700 hover:border-timber-500'
-                    }`}
+                    className={chipClass(active)}
                   >
                     {c}
                   </button>
@@ -108,8 +113,8 @@ function FiltersPanel({
         )}
 
         {availableSizes.length > 0 && (
-          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-            <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+          <div className="rounded-xl border border-timber-100 bg-cream/40 p-3">
+            <label className="mb-2 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
               Sizes
             </label>
             <div className="flex flex-wrap gap-2">
@@ -120,11 +125,8 @@ function FiltersPanel({
                     key={s}
                     type="button"
                     onClick={() => onToggleSize(s)}
-                    className={`min-w-[2.5rem] rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      active
-                        ? 'border-timber-800 bg-timber-800 text-white'
-                        : 'border-timber-200 bg-white text-timber-700 hover:border-timber-500'
-                    }`}
+                    aria-pressed={active}
+                    className={`min-w-[2.5rem] ${chipClass(active)}`}
                   >
                     {s}
                   </button>
@@ -134,8 +136,8 @@ function FiltersPanel({
           </div>
         )}
 
-        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3.5">
-          <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
+        <div className="rounded-xl border border-timber-100 bg-cream/40 p-3">
+          <label className="mb-2 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
             Price range (EGP)
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -183,7 +185,7 @@ function FiltersPanel({
           onClear();
           onClose?.();
         }}
-        className="mt-5 w-full shrink-0 rounded-xl border border-timber-200 bg-white px-4 py-2.5 text-sm font-medium text-timber-600 transition hover:border-timber-500 hover:text-timber-800"
+        className="mt-4 w-full rounded-xl border border-timber-200 bg-white px-4 py-2.5 text-sm font-medium text-timber-600 transition hover:border-timber-500 hover:text-timber-800"
       >
         Clear filters
       </button>
@@ -370,7 +372,7 @@ export default function ShopPage() {
       <div className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="hidden lg:block">
-            <div className="sticky top-24">
+            <div className="sticky top-24 self-start">
               <FiltersPanel {...filterProps} />
             </div>
           </aside>
@@ -457,14 +459,14 @@ export default function ShopPage() {
       {mobileFilters && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-timber-900/40" onClick={() => setMobileFilters(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-[min(100%,360px)] flex-col bg-[#f7f4ef] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="absolute inset-y-0 left-0 flex w-[min(100%,360px)] flex-col overflow-y-auto bg-[#f7f4ef] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl">
+            <div className="mb-3 flex shrink-0 items-center justify-between">
               <span className="font-semibold text-timber-800">Filters</span>
               <button type="button" className="rounded-full p-2 hover:bg-white" onClick={() => setMobileFilters(false)}>
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-timber-200/80 bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-timber-200/80 bg-white p-4 shadow-sm">
               <FiltersPanel
                 {...filterProps}
                 embedded

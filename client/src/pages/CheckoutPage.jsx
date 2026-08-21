@@ -25,6 +25,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
   const navigate = useNavigate();
   const orderPlacedRef = useRef(false);
+  const placingRef = useRef(false);
   const receiptInputRef = useRef(null);
   const addr = user?.address || {};
   const [form, setForm] = useState({
@@ -102,6 +103,7 @@ export default function CheckoutPage() {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (placingRef.current || orderPlacedRef.current) return;
     if (!items.length) return toast.error('Cart is empty');
     if (!form.name.trim() || !form.phone.trim()) {
       return toast.error('Name and phone are required');
@@ -128,6 +130,7 @@ export default function CheckoutPage() {
       size: i.size,
     }));
 
+    placingRef.current = true;
     setLoading(true);
     try {
       let paymentReceiptUrl;
@@ -139,7 +142,7 @@ export default function CheckoutPage() {
         orderItems,
         paymentMethod: form.paymentMethod,
         shippingAddress,
-        couponCode: form.couponCode || undefined,
+        couponCode: String(form.couponCode || '').trim() || undefined,
         paymentReceiptUrl,
       };
 
@@ -167,6 +170,7 @@ export default function CheckoutPage() {
       clear();
       toast.success('Order placed');
     } catch (err) {
+      placingRef.current = false;
       toast.error(err.response?.data?.message || err.message || 'Checkout failed');
     } finally {
       setLoading(false);

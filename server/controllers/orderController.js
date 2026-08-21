@@ -111,12 +111,13 @@ const resolveCoupon = async (couponCode, itemsPrice) => {
   let discountAmount = 0;
   let couponId = null;
   let savedCouponCode = null;
-  if (!couponCode) {
+  const code = String(couponCode || '').trim();
+  if (!code) {
     return { discountAmount, couponId, savedCouponCode };
   }
 
   const coupon = await prisma.coupon.findUnique({
-    where: { code: String(couponCode).toUpperCase() },
+    where: { code: code.toUpperCase() },
   });
   if (!coupon || !coupon.isActive) {
     const err = new Error('Invalid coupon');

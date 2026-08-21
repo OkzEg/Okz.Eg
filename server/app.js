@@ -13,6 +13,7 @@ const userRoutes = require('./routes/userRoutes');
 const slideRoutes = require('./routes/slideRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const problemRoutes = require('./routes/problemRoutes');
+const { getMailStatus } = require('./utils/mail');
 
 const app = express();
 
@@ -39,7 +40,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/problems', problemRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, mail: getMailStatus() });
 });
 
 app.get('/', (req, res) => {

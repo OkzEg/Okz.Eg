@@ -1,5 +1,6 @@
 const app = require('./app');
 const prisma = require('./lib/prisma');
+const { logMailStatus } = require('./utils/mail');
 
 // Deploy ping — keep env SMTP_* configured for order emails
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ const start = async () => {
 
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      logMailStatus();
     });
 
     const shutdown = async (signal) => {

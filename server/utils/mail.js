@@ -1,17 +1,25 @@
 const { buildOrderConfirmationHtml, formatMoney } = require('./orderEmailTemplate');
 
-let transporter;
 let nodemailer;
+let cachedTransport;
+let cachedAttemptLabel;
 
-const SMTP_CONNECT_MS = Number(process.env.SMTP_CONNECT_TIMEOUT_MS || 8000);
-const SMTP_SOCKET_MS = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000);
-const SMTP_SEND_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS || 20000);
+const SMTP_CONNECT_MS = Number(process.env.SMTP_CONNECT_TIMEOUT_MS || 20000);
+const SMTP_SOCKET_MS = Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 25000);
+const SMTP_SEND_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS || 30000);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const cleanEnv = (key, fallback = '') => {
+  const raw = process.env[key];
+  if (raw == null) return fallback;
+  return String(raw)
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '');
+};
 
 const loadNodemailer = () => {
   if (nodemailer) return nodemailer;
   try {
-    // Lazy load so a missing install does not crash the whole API on boot
     nodemailer = require('nodemailer');
     return nodemailer;
   } catch (error) {
@@ -20,45 +28,33 @@ const loadNodemailer = () => {
   }
 };
 
-const isMailConfigured = () =>
-  Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+const smtpUser = () => cleanEnv('SMTP_USER');
+const smtpPass = () => cleanEnv('SMTP_PASS').replace(/\s+/g, '');
+const smtpHost = () => cleanEnv('SMTP_HOST', 'smtp.gmail.com') || 'smtp.gmail.com';
 
-const destroyTransporter = () => {
-  if (!transporter) return;
-  try {
-    transporter.close();
-  } catch {
-    /* ignore */
-  }
-  transporter = null;
+const isMailConfigured = () => Boolean(smtpUser() && smtpPass());
+
+const isGmail = () => {
+  const host = smtpHost();
+  const user = smtpUser();
+  return /gmail\.com$/i.test(host) || /@(gmail|googlemail)\.com$/i.test(user);
 };
 
-const getTransporter = () => {
-  if (!isMailConfigured()) return null;
-  const nm = loadNodemailer();
-  if (!nm) return null;
-  if (!transporter) {
-    const pass = String(process.env.SMTP_PASS || '').replace(/\s+/g, '');
-    const port = Number(process.env.SMTP_PORT || 587);
-    const secure =
-      String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
-    transporter = nm.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port,
-      secure,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass,
-      },
-      // Gmail + IPv6 often hangs on PaaS until the proxy returns 502
-      family: 4,
-      connectionTimeout: SMTP_CONNECT_MS,
-      greetingTimeout: SMTP_CONNECT_MS,
-      socketTimeout: SMTP_SOCKET_MS,
-      tls: { minVersion: 'TLSv1.2' },
-    });
+const formatSmtpError = (error) =>
+  [error?.message, error?.code, error?.command, error?.response].filter(Boolean).join(' | ');
+
+const destroyTransporter = (transport = cachedTransport) => {
+  if (transport) {
+    try {
+      transport.close();
+    } catch {
+      /* ignore */
+    }
   }
-  return transporter;
+  if (transport === cachedTransport) {
+    cachedTransport = null;
+    cachedAttemptLabel = null;
+  }
 };
 
 const withTimeout = (promise, ms, label) =>
@@ -78,11 +74,102 @@ const withTimeout = (promise, ms, label) =>
     );
   });
 
+const connectionAttempts = () => {
+  if (isGmail()) {
+    // Port 587 STARTTLS commonly hangs on PaaS (the original 502). Prefer 465 SSL.
+    return [
+      { port: 465, secure: true, family: 4, label: 'gmail:465/ssl/ipv4' },
+      { port: 465, secure: true, family: 0, label: 'gmail:465/ssl' },
+      { port: 587, secure: false, family: 4, label: 'gmail:587/starttls/ipv4' },
+      { port: 587, secure: false, family: 0, label: 'gmail:587/starttls' },
+    ];
+  }
+
+  const port = Number(cleanEnv('SMTP_PORT', '587')) || 587;
+  const secure =
+    cleanEnv('SMTP_SECURE').toLowerCase() === 'true' || port === 465;
+  return [
+    { port, secure, family: 4, label: `custom:${port}/${secure ? 'ssl' : 'starttls'}/ipv4` },
+    { port, secure, family: 0, label: `custom:${port}/${secure ? 'ssl' : 'starttls'}` },
+  ];
+};
+
+const createTransportForAttempt = (nm, attempt) => {
+  const host = smtpHost();
+  const options = {
+    host,
+    port: attempt.port,
+    secure: attempt.secure,
+    auth: {
+      user: smtpUser(),
+      pass: smtpPass(),
+    },
+    connectionTimeout: SMTP_CONNECT_MS,
+    greetingTimeout: SMTP_CONNECT_MS,
+    socketTimeout: SMTP_SOCKET_MS,
+    tls: { minVersion: 'TLSv1.2', servername: host },
+  };
+  if (attempt.family) options.family = attempt.family;
+  if (!attempt.secure) options.requireTLS = true;
+  return nm.createTransport(options);
+};
+
+const sendViaTransport = async (transport, mail) =>
+  withTimeout(transport.sendMail(mail), SMTP_SEND_MS, 'SMTP sendMail');
+
 const resolveRecipient = (order) => {
   const raw = order?.customerEmail || order?.guestEmail || order?.user?.email;
   const to = String(raw || '').trim().toLowerCase();
   if (!to || !EMAIL_RE.test(to)) return '';
   return to;
+};
+
+const buildMailPayload = (order, to) => {
+  const orderId = String(order.id || '').slice(0, 8).toUpperCase();
+  const senderEmail = smtpUser() || 'okzeg3@gmail.com';
+  const senderName = (cleanEnv('MAIL_FROM_NAME', 'OKZ') || 'OKZ').replace(/"/g, '');
+  // Gmail only delivers when From matches the authenticated mailbox.
+  const from = `"${senderName}" <${senderEmail}>`;
+  const replyTo = cleanEnv('MAIL_REPLY_TO', senderEmail) || senderEmail;
+
+  let html;
+  try {
+    html = buildOrderConfirmationHtml(order);
+  } catch (htmlError) {
+    console.error('[mail] HTML template failed, sending text only:', htmlError.message);
+  }
+
+  const textLines = [
+    `OKZ order confirmation #${orderId}`,
+    '',
+    `Hi ${order.customerName || order.guestName || 'there'},`,
+    'Thanks — we received your order.',
+    '',
+    `Payment: ${order.paymentMethod || '—'}`,
+    `Total: ${formatMoney(order.totalPrice)}`,
+    '',
+    ...(order.items || []).map((item) => {
+      const meta = [item.color, item.size ? `Size ${item.size}` : null, `×${item.qty}`]
+        .filter(Boolean)
+        .join(' · ');
+      return `- ${item.name}${meta ? ` (${meta})` : ''} — ${formatMoney(
+        Number(item.price) * Number(item.qty)
+      )}`;
+    }),
+    '',
+    'We’ll contact you within 12 hours to confirm.',
+    `Help: ${senderEmail}`,
+  ];
+
+  return {
+    from,
+    to,
+    replyTo,
+    envelope: { from: senderEmail, to },
+    subject: `OKZ order confirmed · #${orderId}`,
+    html,
+    text: textLines.join('\n'),
+  };
 };
 
 /**
@@ -97,71 +184,56 @@ const sendOrderConfirmationEmail = async (order) => {
       return { skipped: true, reason: 'no_email' };
     }
 
-    const transport = getTransporter();
-    if (!transport) {
+    if (!isMailConfigured()) {
       console.warn(
-        '[mail] SMTP not configured (set SMTP_HOST, SMTP_USER, SMTP_PASS). Skipping order confirmation.'
+        '[mail] SMTP not configured (set SMTP_USER and SMTP_PASS). Skipping order confirmation.'
       );
       return { skipped: true, reason: 'not_configured' };
     }
 
-    const orderId = String(order.id || '').slice(0, 8).toUpperCase();
-    const senderEmail = process.env.SMTP_USER || 'okzeg3@gmail.com';
-    const senderName = (process.env.MAIL_FROM_NAME || 'OKZ').trim() || 'OKZ';
-    // Display name only — actual mailbox stays SMTP_USER (e.g. okzeg3@gmail.com)
-    const from =
-      process.env.SMTP_FROM ||
-      process.env.MAIL_FROM ||
-      `"${senderName.replace(/"/g, '')}" <${senderEmail}>`;
-    const replyTo = process.env.MAIL_REPLY_TO || senderEmail;
+    const nm = loadNodemailer();
+    if (!nm) return { skipped: true, reason: 'nodemailer_missing' };
 
-    let html;
-    try {
-      html = buildOrderConfirmationHtml(order);
-    } catch (htmlError) {
-      console.error('[mail] HTML template failed, sending text only:', htmlError.message);
+    const mail = buildMailPayload(order, to);
+
+    if (cachedTransport) {
+      try {
+        const info = await sendViaTransport(cachedTransport, mail);
+        console.log(
+          `[mail] Order confirmation sent to ${to} via ${cachedAttemptLabel || 'cached'} (${info.messageId || 'ok'})`
+        );
+        return { sent: true, messageId: info.messageId };
+      } catch (error) {
+        console.warn(`[mail] Cached SMTP failed (${cachedAttemptLabel}): ${formatSmtpError(error)}`);
+        destroyTransporter();
+      }
     }
 
-    const textLines = [
-      `OKZ order confirmation #${orderId}`,
-      '',
-      `Hi ${order.customerName || order.guestName || 'there'},`,
-      'Thanks — we received your order.',
-      '',
-      `Payment: ${order.paymentMethod || '—'}`,
-      `Total: ${formatMoney(order.totalPrice)}`,
-      '',
-      ...(order.items || []).map((item) => {
-        const meta = [item.color, item.size ? `Size ${item.size}` : null, `×${item.qty}`]
-          .filter(Boolean)
-          .join(' · ');
-        return `- ${item.name}${meta ? ` (${meta})` : ''} — ${formatMoney(
-          Number(item.price) * Number(item.qty)
-        )}`;
-      }),
-      '',
-      'We’ll contact you within 12 hours to confirm.',
-      'Help: okzeg3@gmail.com',
-    ];
+    const attempts = connectionAttempts();
+    let lastError = 'no attempts';
+    for (const attempt of attempts) {
+      const transport = createTransportForAttempt(nm, attempt);
+      try {
+        console.log(`[mail] Trying SMTP ${attempt.label} to ${smtpHost()}`);
+        const info = await sendViaTransport(transport, mail);
+        cachedTransport = transport;
+        cachedAttemptLabel = attempt.label;
+        console.log(
+          `[mail] Order confirmation sent to ${to} via ${attempt.label} (${info.messageId || 'ok'})`
+        );
+        return { sent: true, messageId: info.messageId, via: attempt.label };
+      } catch (error) {
+        lastError = formatSmtpError(error);
+        console.error(`[mail] SMTP ${attempt.label} failed: ${lastError}`);
+        destroyTransporter(transport);
+      }
+    }
 
-    const info = await withTimeout(
-      transport.sendMail({
-        from,
-        to,
-        replyTo,
-        subject: `OKZ order confirmed · #${orderId}`,
-        html,
-        text: textLines.join('\n'),
-      }),
-      SMTP_SEND_MS,
-      'SMTP sendMail'
-    );
-    console.log(`[mail] Order confirmation sent to ${to} (${info.messageId || 'ok'})`);
-    return { sent: true, messageId: info.messageId };
+    return { sent: false, error: lastError };
   } catch (error) {
     destroyTransporter();
-    console.error('[mail] Failed to send order confirmation:', error.message);
-    return { sent: false, error: error.message };
+    console.error('[mail] Failed to send order confirmation:', formatSmtpError(error));
+    return { sent: false, error: formatSmtpError(error) };
   }
 };
 
@@ -176,8 +248,40 @@ const queueOrderConfirmationEmail = (order) => {
   });
 };
 
+const getMailStatus = () => {
+  const user = smtpUser();
+  const masked =
+    user && user.includes('@')
+      ? `${user.slice(0, 2)}***@${user.split('@')[1]}`
+      : user
+        ? 'set'
+        : '';
+  return {
+    configured: isMailConfigured(),
+    host: smtpHost(),
+    user: masked || null,
+    gmail: isGmail(),
+  };
+};
+
+const logMailStatus = () => {
+  const status = getMailStatus();
+  if (!status.configured) {
+    console.warn(
+      `[mail] NOT CONFIGURED — set SMTP_USER and SMTP_PASS (optional SMTP_HOST, currently ${status.host})`
+    );
+    return status;
+  }
+  console.log(
+    `[mail] configured user=${status.user} host=${status.host} gmail=${status.gmail} passLen=${smtpPass().length}`
+  );
+  return status;
+};
+
 module.exports = {
   isMailConfigured,
   sendOrderConfirmationEmail,
   queueOrderConfirmationEmail,
+  getMailStatus,
+  logMailStatus,
 };

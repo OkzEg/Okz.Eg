@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { ImagePlus, Truck, ShieldCheck, X } from 'lucide-react';
+import { ImagePlus, Truck, ShieldCheck, Wallet, X } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -273,9 +273,10 @@ export default function CheckoutPage() {
                       href={INSTAPAY_URL}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn-wheat inline-flex w-full sm:w-auto"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-timber-300 bg-transparent px-4 py-2.5 text-sm font-semibold text-timber-800 hover:bg-white/50 focus:outline-none focus:ring-2 focus:ring-wheat focus:ring-offset-2 sm:w-auto"
                     >
-                      Open InstaPay
+                      <Wallet className="h-4 w-4" strokeWidth={2} />
+                      InstaPay
                     </a>
                   ) : INSTAPAY_HANDLE ? (
                     <p>

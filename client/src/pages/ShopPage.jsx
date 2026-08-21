@@ -84,21 +84,25 @@ function FiltersPanel({
             <label className="mb-2.5 block text-[10.5px] font-bold uppercase tracking-wider text-timber-500">
               Colors
             </label>
-            <div className="max-h-40 space-y-2.5 overflow-y-auto">
-              {availableColors.map((c) => (
-                <label
-                  key={c}
-                  className="flex cursor-pointer items-center gap-3 text-sm text-timber-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedColors.includes(c)}
-                    onChange={() => onToggleColor(c)}
-                    className="h-4 w-4 rounded border-timber-300 text-timber-800 focus:ring-wheat"
-                  />
-                  {c}
-                </label>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {availableColors.map((c) => {
+                const active = selectedColors.includes(c);
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => onToggleColor(c)}
+                    aria-pressed={active}
+                    className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
+                      active
+                        ? 'border-timber-800 bg-timber-800 text-white'
+                        : 'border-timber-200 bg-white text-timber-700 hover:border-timber-500'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

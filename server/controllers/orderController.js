@@ -326,8 +326,8 @@ const createOrder = async (req, res) => {
     });
 
     const payload = serializeOrder(order);
-    res.status(201).json(payload);
     queueOrderConfirmationEmail(payload);
+    res.status(201).json(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     if (error.message?.startsWith('Insufficient stock')) {
@@ -402,8 +402,8 @@ const createGuestOrder = async (req, res) => {
     });
 
     const payload = serializeOrder(order);
-    res.status(201).json(payload);
     queueOrderConfirmationEmail(payload);
+    res.status(201).json(payload);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ message: error.message });
     if (error.message?.startsWith('Insufficient stock')) {

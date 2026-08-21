@@ -209,7 +209,7 @@ export default function ProductPage() {
                 <div className="grid h-full place-items-center text-timber-400">No photo</div>
               )}
               {product.isSaleActive && (
-                <span className="absolute left-4 top-4 rounded-full bg-timber-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-wheat">
+                <span className="absolute left-4 top-4 rounded-full border border-wheat-300 bg-wheat-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-timber-800">
                   Sale
                 </span>
               )}

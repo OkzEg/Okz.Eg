@@ -110,7 +110,7 @@ export default function ProductCard({ product }) {
         </Link>
 
         {product.isSaleActive && (
-          <span className="pointer-events-none absolute start-2 top-2 rounded-full bg-timber-800 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-wheat sm:start-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[10px]">
+          <span className="pointer-events-none absolute start-2 top-2 rounded-full border border-wheat-300 bg-wheat-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-timber-800 sm:start-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-[10px]">
             Sale
           </span>
         )}
@@ -200,7 +200,7 @@ export default function ProductCard({ product }) {
             onClick={addToCart}
             aria-label="Add to cart"
             title={canAdd ? 'Add to cart' : 'Out of stock'}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-timber-800 text-wheat shadow-sm sm:h-10 sm:w-10 sm:transition sm:hover:scale-105 sm:hover:bg-timber-700 disabled:cursor-not-allowed disabled:bg-timber-200 disabled:text-timber-400 disabled:hover:scale-100"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-timber-200 bg-white text-timber-800 shadow-sm sm:h-10 sm:w-10 sm:transition sm:hover:scale-105 sm:hover:border-timber-400 sm:hover:bg-cream disabled:cursor-not-allowed disabled:border-timber-100 disabled:bg-timber-50 disabled:text-timber-300 disabled:hover:scale-100"
           >
             <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>

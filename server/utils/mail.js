@@ -145,6 +145,76 @@ const createTransportForAttempt = (nm, attempt) => {
 const sendViaTransport = async (transport, mail) =>
   withTimeout(transport.sendMail(mail), SMTP_SEND_MS, 'SMTP sendMail');
 
+const webhookUrl = () => cleanEnv('MAIL_WEBHOOK_URL');
+const resendKey = () => cleanEnv('RESEND_API_KEY');
+const hasHttpRelay = () => Boolean(webhookUrl() || resendKey());
+
+const sendViaWebhook = async (mail) => {
+  const url = webhookUrl();
+  if (!url) return null;
+  const response = await withTimeout(
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        secret: cleanEnv('MAIL_WEBHOOK_SECRET'),
+        to: mail.to,
+        bcc: mail.bcc || '',
+        subject: mail.subject,
+        html: mail.html || '',
+        text: mail.text || '',
+        fromName: cleanEnv('MAIL_FROM_NAME', 'OKZ') || 'OKZ',
+        replyTo: mail.replyTo,
+      }),
+      redirect: 'follow',
+    }),
+    20000,
+    'mail webhook'
+  );
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`webhook ${response.status}: ${body.slice(0, 240)}`);
+  }
+  return { messageId: 'webhook', via: 'gmail-apps-script' };
+};
+
+const sendViaResend = async (mail) => {
+  const key = resendKey();
+  if (!key) return null;
+  const fromEmail = cleanEnv('RESEND_FROM', smtpUser());
+  const response = await withTimeout(
+    fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${cleanEnv('MAIL_FROM_NAME', 'OKZ') || 'OKZ'} <${fromEmail}>`,
+        to: [mail.to],
+        bcc: mail.bcc ? [mail.bcc] : undefined,
+        reply_to: mail.replyTo,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+      }),
+    }),
+    20000,
+    'Resend API'
+  );
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`resend ${response.status}: ${body.slice(0, 240)}`);
+  }
+  return { messageId: 'resend', via: 'resend' };
+};
+
+const sendViaHttp = async (mail) => {
+  if (webhookUrl()) return sendViaWebhook(mail);
+  if (resendKey()) return sendViaResend(mail);
+  return null;
+};
+
 const resolveRecipient = (order) => {
   const raw = order?.customerEmail || order?.guestEmail || order?.user?.email;
   const to = String(raw || '').trim().toLowerCase();
@@ -221,19 +291,66 @@ const sendOrderConfirmationEmail = async (order) => {
       return { skipped: true, reason: 'no_email' };
     }
 
+    const mail = buildMailPayload(order, to);
+
+    if (hasHttpRelay()) {
+      try {
+        const info = await sendViaHttp(mail);
+        lastSend = {
+          at: new Date().toISOString(),
+          to: maskEmail(to),
+          sent: true,
+          error: null,
+          via: info.via,
+        };
+        console.log(`[mail] Order confirmation sent to ${to} via ${info.via}`);
+        return { sent: true, messageId: info.messageId, via: info.via };
+      } catch (error) {
+        console.error('[mail] HTTP relay failed:', formatSmtpError(error));
+        lastSend = {
+          at: new Date().toISOString(),
+          to: maskEmail(to),
+          sent: false,
+          error: formatSmtpError(error),
+          via: 'http',
+        };
+        if (lastProbe.verified === false) {
+          return { sent: false, error: formatSmtpError(error) };
+        }
+      }
+    }
+
     if (!isMailConfigured()) {
-      lastSend = { at: new Date().toISOString(), to: maskEmail(to), sent: false, error: 'not_configured', via: null };
+      lastSend = {
+        at: new Date().toISOString(),
+        to: maskEmail(to),
+        sent: false,
+        error: 'not_configured',
+        via: null,
+      };
       console.warn('[mail] SMTP not configured (set SMTP_USER and SMTP_PASS). Skipping order confirmation.');
       return { skipped: true, reason: 'not_configured' };
     }
 
-    const nm = loadNodemailer();
-    if (!nm) {
-      lastSend = { at: new Date().toISOString(), to: maskEmail(to), sent: false, error: 'nodemailer_missing', via: null };
-      return { skipped: true, reason: 'nodemailer_missing' };
+    if (lastProbe.verified === false) {
+      const error =
+        'Railway cannot reach smtp.gmail.com (ports 465/587 timed out). Set MAIL_WEBHOOK_URL (Google Apps Script) or RESEND_API_KEY.';
+      lastSend = { at: new Date().toISOString(), to: maskEmail(to), sent: false, error, via: null };
+      console.error(`[mail] ${error}`);
+      return { sent: false, error };
     }
 
-    const mail = buildMailPayload(order, to);
+    const nm = loadNodemailer();
+    if (!nm) {
+      lastSend = {
+        at: new Date().toISOString(),
+        to: maskEmail(to),
+        sent: false,
+        error: 'nodemailer_missing',
+        via: null,
+      };
+      return { skipped: true, reason: 'nodemailer_missing' };
+    }
 
     if (cachedTransport) {
       try {
@@ -309,12 +426,14 @@ const queueOrderConfirmationEmail = (order) => {
 };
 
 const getMailStatus = () => ({
-  configured: isMailConfigured(),
+  configured: isMailConfigured() || hasHttpRelay(),
   host: smtpHost(),
   user: maskEmail(smtpUser()),
   gmail: isGmail(),
   passLen: smtpPass().length,
   appPasswordLen: smtpPass().length === 16,
+  smtpReachable: lastProbe.verified,
+  httpRelay: hasHttpRelay(),
   probe: lastProbe,
   lastSend,
 });

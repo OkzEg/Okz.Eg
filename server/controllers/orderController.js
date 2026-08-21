@@ -99,6 +99,7 @@ const buildOrderItems = async (orderItems) => {
       qty,
       image: product.photos[0] || '',
       price,
+      cost: Number(product.cost) || 1000,
       color: item.color || null,
       size: item.size || null,
     });
@@ -420,7 +421,11 @@ const serializeOrder = (order) => ({
   shippingPrice: Number(order.shippingPrice),
   discountAmount: Number(order.discountAmount),
   totalPrice: Number(order.totalPrice),
-  items: order.items?.map((i) => ({ ...i, price: Number(i.price) })),
+  items: order.items?.map((i) => ({
+    ...i,
+    price: Number(i.price),
+    cost: i.cost != null ? Number(i.cost) : 1000,
+  })),
   customerName: order.user?.name || order.guestName || null,
   customerPhone: order.user?.phone || order.guestPhone || null,
   customerEmail: order.user?.email || order.guestEmail || null,
@@ -623,6 +628,7 @@ const financeSummary = async (req, res) => {
       lowStock: lowStock.map((p) => ({
         ...p,
         price: Number(p.price),
+        cost: p.cost != null ? Number(p.cost) : 1000,
         salePrice: p.salePrice != null ? Number(p.salePrice) : null,
       })),
       recentOrders: orders.slice(0, 10).map(serializeOrder),

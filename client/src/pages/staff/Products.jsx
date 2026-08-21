@@ -9,6 +9,7 @@ const empty = {
   name: '',
   description: '',
   price: '',
+  cost: '1000',
   type: 'shoe',
   photos: '',
   driveFolder: '',
@@ -167,6 +168,7 @@ export default function StaffProducts() {
       name: p.name,
       description: p.description,
       price: p.price,
+      cost: p.cost ?? 1000,
       type: p.type,
       photos: (p.photos || []).join('\n'),
       driveFolder: '',
@@ -229,6 +231,7 @@ export default function StaffProducts() {
       name: form.name,
       description: form.description,
       price: Number(form.price),
+      cost: form.cost === '' ? 1000 : Number(form.cost),
       type: form.type,
       photos: links,
       colors: form.colors.split(',').map((s) => s.trim()).filter(Boolean),
@@ -291,6 +294,7 @@ export default function StaffProducts() {
               <th>Item</th>
               <th>Type</th>
               <th>Price</th>
+              <th>Cost</th>
               <th>Stock</th>
               <th>Shop order</th>
               <th>Home</th>
@@ -313,6 +317,7 @@ export default function StaffProducts() {
                 </td>
                 <td className="capitalize">{p.type.replace('_', ' ')}</td>
                 <td>{formatMoney(p.price)}</td>
+                <td>{formatMoney(p.cost ?? 1000)}</td>
                 <td className="!whitespace-normal">
                   {p.sizes?.length ? (
                     <div className="flex flex-col items-start gap-1.5">
@@ -448,6 +453,20 @@ export default function StaffProducts() {
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
               />
+            </div>
+            <div>
+              <label className="label">Cost (EGP)</label>
+              <input
+                type="number"
+                min="0"
+                className="input"
+                value={form.cost}
+                onChange={(e) => setForm({ ...form, cost: e.target.value })}
+                placeholder="1000"
+              />
+              <p className="mt-1 text-xs text-timber-400">
+                What you pay to source this item — used for finance / profit.
+              </p>
             </div>
             <div>
               <label className="label">Type</label>

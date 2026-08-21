@@ -5,6 +5,7 @@ const { resolvePhotoLinks } = require('../utils/drivePhotos');
 const serializeProduct = (p) => ({
   ...p,
   price: Number(p.price),
+  cost: p.cost != null ? Number(p.cost) : 1000,
   salePrice: p.salePrice != null ? Number(p.salePrice) : null,
   sizeStock: p.sizeStock && typeof p.sizeStock === 'object' ? p.sizeStock : {},
 });
@@ -38,6 +39,7 @@ const PRODUCT_SELECT = {
   name: true,
   description: true,
   price: true,
+  cost: true,
   type: true,
   photos: true,
   colors: true,
@@ -156,6 +158,7 @@ const createProduct = async (req, res) => {
       name,
       description,
       price,
+      cost,
       type,
       photos,
       colors,
@@ -178,12 +181,14 @@ const createProduct = async (req, res) => {
     const normalizedSizes = sizes || [];
     const normalizedSizeStock = normalizeSizeStock(sizeStock);
     const totalStock = computeStock(normalizedSizes, normalizedSizeStock, stock);
+    const unitCost = cost == null || cost === '' ? 1000 : Number(cost);
 
     const product = await prisma.product.create({
       data: {
         name,
         description,
         price,
+        cost: Number.isFinite(unitCost) && unitCost >= 0 ? unitCost : 1000,
         type,
         photos: resolvedPhotos,
         colors: colors || [],
@@ -211,6 +216,7 @@ const ALLOWED_UPDATE = [
   'name',
   'description',
   'price',
+  'cost',
   'type',
   'photos',
   'colors',
@@ -232,7 +238,10 @@ const updateProduct = async (req, res) => {
     for (const key of ALLOWED_UPDATE) {
       if (req.body[key] !== undefined) data[key] = req.body[key];
     }
-    if (data.sortOrder !== undefined) data.sortOrder = toInt(data.sortOrder, 0);
+    if (data.cost !== undefined) {
+      const unitCost = Number(data.cost);
+      data.cost = Number.isFinite(unitCost) && unitCost >= 0 ? unitCost : 1000;
+    }
     if (data.bestSellerOrder !== undefined) data.bestSellerOrder = toInt(data.bestSellerOrder, 0);
     if (data.homeOrder !== undefined) data.homeOrder = toInt(data.homeOrder, 0);
     if (data.isBestSeller !== undefined) data.isBestSeller = Boolean(data.isBestSeller);

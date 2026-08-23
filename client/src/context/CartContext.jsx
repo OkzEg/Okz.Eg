@@ -56,6 +56,42 @@ export function CartProvider({ children }) {
     );
   };
 
+  const updateItem = (from, next) => {
+    setItems((prev) => {
+      const fromKey = itemKey(from.productId, from.color, from.size);
+      const source = prev.find((i) => itemKey(i.productId, i.color, i.size) === fromKey);
+      if (!source) return prev;
+
+      const nextColor = next.color !== undefined ? next.color : source.color;
+      const nextSize = next.size !== undefined ? next.size : source.size;
+      const nextQty = Math.max(1, Number(next.qty ?? source.qty) || 1);
+      const toKey = itemKey(source.productId, nextColor, nextSize);
+
+      const withoutSource = prev.filter((i) => itemKey(i.productId, i.color, i.size) !== fromKey);
+      const existing = withoutSource.find((i) => itemKey(i.productId, i.color, i.size) === toKey);
+
+      if (existing) {
+        return withoutSource.map((i) =>
+          itemKey(i.productId, i.color, i.size) === toKey
+            ? { ...i, qty: nextQty, stock: next.stock ?? i.stock }
+            : i
+        );
+      }
+
+      return [
+        ...withoutSource,
+        {
+          ...source,
+          color: nextColor,
+          size: nextSize,
+          qty: nextQty,
+          stock: next.stock ?? source.stock,
+          image: next.image ?? source.image,
+        },
+      ];
+    });
+  };
+
   const removeItem = (productId, color, size) => {
     setItems((prev) =>
       prev.filter((i) => itemKey(i.productId, i.color, i.size) !== itemKey(productId, color, size))
@@ -68,7 +104,7 @@ export function CartProvider({ children }) {
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
 
   const value = useMemo(
-    () => ({ items, addItem, updateQty, removeItem, clear, count, subtotal }),
+    () => ({ items, addItem, updateQty, updateItem, removeItem, clear, count, subtotal }),
     [items, count, subtotal]
   );
 

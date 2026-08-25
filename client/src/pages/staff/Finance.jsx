@@ -119,7 +119,7 @@ export default function StaffFinance() {
         <div>
           <h1 className="page-title">Finance</h1>
           <p className="page-subtitle">
-            Revenue, product costs, custom ledger, and shareholder splits
+            Revenue, costs, ledger, and shareholder profit splits
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-end">

@@ -231,6 +231,18 @@ export default function StaffFinance() {
 
       {data && tab === 'shareholders' && (
         <div className="space-y-6">
+          {o && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <StatCard title="Company profit" value={formatMoney(o.profit)} icon={Wallet} tone="wheat" />
+              <StatCard
+                title="Total revenue"
+                value={formatMoney(o.totalRevenue)}
+                icon={TrendingUp}
+                tone="green"
+              />
+            </div>
+          )}
+
           <div className="grid md:grid-cols-3 gap-4">
             {(data.shareholders || []).map((s) => (
               <div key={s.id} className="card space-y-3">
@@ -239,12 +251,28 @@ export default function StaffFinance() {
                   <h2 className="font-semibold text-lg">{s.name}</h2>
                   <span className="ms-auto text-sm font-bold text-timber-500">{s.sharePercent}%</span>
                 </div>
-                <Row label="Profit share" value={formatMoney(s.profitShare)} bold />
+                <div className="rounded-xl bg-cream/70 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-timber-500">
+                    Profit
+                  </p>
+                  <p className="mt-1 font-display text-3xl tracking-wide text-timber-900">
+                    {formatMoney(s.profitShare)}
+                  </p>
+                  <p className="mt-1 text-xs text-timber-400">
+                    {s.sharePercent}% of company profit
+                    {o ? ` (${formatMoney(o.profit)})` : ''}
+                  </p>
+                </div>
                 <Row label="Owed to them (advances)" value={formatMoney(s.owedToThem)} />
                 <Row label="They owe others" value={formatMoney(s.theyOwe)} />
                 <Row
                   label="Net reimbursement"
                   value={formatMoney(s.netReimbursement)}
+                  bold
+                />
+                <Row
+                  label="Profit + net reimbursement"
+                  value={formatMoney((Number(s.profitShare) || 0) + (Number(s.netReimbursement) || 0))}
                   bold
                 />
               </div>

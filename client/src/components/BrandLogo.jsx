@@ -8,7 +8,6 @@ const SIZES = {
   header: 'h-12 sm:h-[4.75rem]',
 };
 
-/** OKZ wordmark — transparent PNG. */
 export default function BrandLogo({ to = '/', size = 'md', className = '', style }) {
   const img = (
     <img

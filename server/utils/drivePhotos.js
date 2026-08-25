@@ -34,7 +34,6 @@ const extractFileId = (url) => {
 
 const isDriveFolderUrl = (url) => Boolean(extractFolderId(url));
 
-/** List public folder files via Drive API (needs GOOGLE_DRIVE_API_KEY). */
 const listFolderViaApi = async (folderId) => {
   const key = process.env.GOOGLE_DRIVE_API_KEY;
   if (!key) return null;
@@ -58,10 +57,6 @@ const listFolderViaApi = async (folderId) => {
     .map((f) => fileViewUrl(f.id));
 };
 
-/**
- * Fallback for public folders without API key:
- * parse Google's embedded folder view HTML for file IDs.
- */
 const listFolderViaEmbed = async (folderId) => {
   const url = `https://drive.google.com/embeddedfolderview?id=${folderId}#list`;
   const res = await fetch(url, {
@@ -89,7 +84,6 @@ const listFolderViaEmbed = async (folderId) => {
     ids.add(match[1]);
   }
 
-  // Prefer entries that look like images from nearby filename hints
   const imageIds = [];
   for (const id of ids) {
     const idx = html.indexOf(id);
@@ -113,10 +107,6 @@ const listFolderImages = async (folderId) => {
   return listFolderViaEmbed(folderId);
 };
 
-/**
- * Expand a mix of Drive folder links, file links, and plain image URLs
- * into a flat list of viewable image URLs.
- */
 const resolvePhotoLinks = async (links = []) => {
   const input = Array.isArray(links) ? links : String(links).split(/[\n,]+/);
   const cleaned = input.map((s) => String(s).trim()).filter(Boolean);

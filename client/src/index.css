@@ -38,7 +38,6 @@
     @apply w-full px-3.5 py-2.5 border border-timber-200 rounded-lg text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-wheat focus:border-transparent placeholder-timber-300 transition-colors;
     min-height: 2.75rem;
   }
-  /* 16px+ on mobile avoids iOS zoom; taller tap targets for thumbs */
   .auth-input {
     @apply w-full rounded-xl border border-timber-200 bg-white px-4 py-3.5 text-base text-timber-800 placeholder-timber-300 transition-colors focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wheat;
     min-height: 3rem;
@@ -85,7 +84,6 @@
   .text-balance { text-wrap: balance; }
 }
 
-/* OKZ toast feedback — cream / charcoal / terracotta */
 .Toastify__toast-container {
   z-index: 9999;
   width: min(420px, calc(100vw - 1.5rem));

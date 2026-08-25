@@ -193,7 +193,6 @@ const financeOverview = async (req, res) => {
     const totalExpenses = cogs + companyExpenses + advanceExpenses;
     const profit = totalRevenue - totalExpenses;
 
-    // Who is owed for advances: payer is reimbursed by others for their ownership shares
     const owedBy = Object.fromEntries(SHAREHOLDERS.map((s) => [s.id, 0]));
     const owedTo = Object.fromEntries(SHAREHOLDERS.map((s) => [s.id, 0]));
     const settlements = [];

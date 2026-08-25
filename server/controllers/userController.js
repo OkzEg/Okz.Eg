@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
+const { sendError } = require('../utils/safeError');
+const { assertPassword, isValidEmail } = require('../utils/validation');
 
 const listUsers = async (req, res) => {
   try {
@@ -18,7 +20,7 @@ const listUsers = async (req, res) => {
     });
     res.json(users);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error);
   }
 };
 
@@ -31,15 +33,19 @@ const createStaffUser = async (req, res) => {
     if (!['admin', 'ops'].includes(role)) {
       return res.status(400).json({ message: 'Role must be admin or ops' });
     }
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: 'A valid email is required' });
+    }
+    assertPassword(password);
 
     const exists = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (exists) return res.status(400).json({ message: 'User already exists' });
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: {
-        name,
-        email: email.toLowerCase(),
+        name: String(name).trim().slice(0, 120),
+        email: email.toLowerCase().trim(),
         passwordHash,
         role,
       },
@@ -53,7 +59,7 @@ const createStaffUser = async (req, res) => {
     });
     res.status(201).json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error, 'Could not create user');
   }
 };
 
@@ -65,7 +71,7 @@ const deleteUser = async (req, res) => {
     await prisma.user.delete({ where: { id: req.params.id } });
     res.json({ message: 'User deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error, 'Could not delete user');
   }
 };
 
@@ -82,10 +88,11 @@ const listCustomers = async (req, res) => {
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
+      take: 1000,
     });
     res.json(customers);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error);
   }
 };
 

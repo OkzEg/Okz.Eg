@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 
-/** Shared shell for login / signup — brand-led, phone-first. */
 export default function AuthLayout({
   title,
   subtitle,

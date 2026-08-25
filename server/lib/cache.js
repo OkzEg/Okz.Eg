@@ -1,4 +1,3 @@
-/** Tiny in-memory TTL cache for public/read-heavy endpoints. */
 const store = new Map();
 
 const get = (key) => {

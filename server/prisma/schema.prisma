@@ -61,7 +61,6 @@ model Product {
   name         String
   description  String
   price        Decimal     @db.Decimal(10, 2)
-  /// Unit cost / COGS (what you pay to source the item)
   cost         Decimal     @default(1000) @db.Decimal(10, 2)
   type         ProductType
   photos       String[]
@@ -91,7 +90,6 @@ model Slide {
   title         String   @default("New Arrival")
   description   String   @default("Shop the collection")
   sortOrder     Int      @default(0)
-  /// desktop = PC / laptop / tablet (md+). mobile = phones.
   placement     String   @default("desktop")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -159,7 +157,6 @@ model OrderItem {
   qty       Int
   image     String
   price     Decimal @db.Decimal(10, 2)
-  /// Unit cost snapshot at purchase time
   cost      Decimal @default(1000) @db.Decimal(10, 2)
   color     String?
   size      String?
@@ -168,14 +165,10 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id])
 }
 
-/// Manual finance ledger: custom expenses & revenue (outside product sales)
 model FinanceEntry {
   id          String   @id @default(uuid())
-  /// expense | revenue
   kind        String
-  /// company = shared business cost (not reimbursed). advance = paid by one shareholder, others owe them back.
   funding     String   @default("company")
-  /// ziad | khaled | omar — required when funding = advance
   paidBy      String?
   title       String
   notes       String?

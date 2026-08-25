@@ -2,7 +2,6 @@ const app = require('./app');
 const prisma = require('./lib/prisma');
 const { logMailStatus, startMailProbe } = require('./utils/mail');
 
-// Deploy ping — keep env SMTP_* configured for order emails
 const PORT = process.env.PORT || 5000;
 const MAX_DB_ATTEMPTS = 5;
 
@@ -30,11 +29,21 @@ const connectWithRetry = async () => {
 
 const start = async () => {
   try {
+    if (!process.env.JWT_SECRET || String(process.env.JWT_SECRET).length < 16) {
+      throw new Error('JWT_SECRET must be set (16+ chars)');
+    }
+
     await connectWithRetry();
-    // Warm a couple of cheap queries (sequential to avoid pool stampede on cold start)
     await prisma.product.count().catch(() => null);
     await prisma.slide.count().catch(() => null);
     console.log('PostgreSQL connected (Supabase)');
+
+    if (!process.env.TURNSTILE_SECRET_KEY) {
+      console.warn('TURNSTILE_SECRET_KEY missing — checkout bot check is rate-limit only');
+    }
+    if (!process.env.CORS_ORIGINS) {
+      console.warn('CORS_ORIGINS missing — allowing all origins');
+    }
 
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
@@ -54,9 +63,6 @@ const start = async () => {
     process.on('SIGTERM', () => shutdown('SIGTERM'));
   } catch (error) {
     console.error('Failed to start server:', error.message);
-    console.error(
-      'Tip: In Supabase Dashboard → Project Settings → Database, confirm the project is not paused and copy a fresh connection string into server/.env (DATABASE_URL port 6543 with ?pgbouncer=true).'
-    );
     process.exit(1);
   }
 };

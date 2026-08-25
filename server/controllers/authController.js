@@ -1,6 +1,15 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const generateToken = require('../utils/generateToken');
+const { sendError } = require('../utils/safeError');
+const {
+  assertPassword,
+  isValidEgyptianPhone,
+  normalizeEgyptianPhone,
+  isValidEmail,
+} = require('../utils/validation');
+
+const BCRYPT_ROUNDS = 12;
 
 const sanitizeUser = (user) => ({
   id: user.id,
@@ -20,17 +29,26 @@ const registerCustomer = async (req, res) => {
         message: 'Name, email, password, phone, and address are required',
       });
     }
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: 'A valid email is required' });
+    }
+    if (!isValidEgyptianPhone(phone)) {
+      return res
+        .status(400)
+        .json({ message: 'Enter a valid Egyptian mobile number (01xxxxxxxxx)' });
+    }
+    assertPassword(password);
 
     const exists = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (exists) return res.status(400).json({ message: 'User already exists' });
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const user = await prisma.user.create({
       data: {
-        name,
-        email: email.toLowerCase(),
+        name: String(name).trim().slice(0, 120),
+        email: email.toLowerCase().trim().slice(0, 160),
         passwordHash,
-        phone,
+        phone: normalizeEgyptianPhone(phone),
         address,
         role: 'customer',
       },
@@ -38,7 +56,7 @@ const registerCustomer = async (req, res) => {
 
     res.status(201).json(sanitizeUser(user));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error, 'Registration failed');
   }
 };
 
@@ -50,12 +68,12 @@ const login = async (req, res) => {
     });
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
 
-    const match = await bcrypt.compare(password, user.passwordHash);
+    const match = await bcrypt.compare(String(password || ''), user.passwordHash);
     if (!match) return res.status(401).json({ message: 'Invalid email or password' });
 
     res.json(sanitizeUser(user));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error, 'Login failed');
   }
 };
 
@@ -76,7 +94,7 @@ const getMe = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error);
   }
 };
 
@@ -85,9 +103,17 @@ const updateProfile = async (req, res) => {
     if (req.user.role !== 'customer') {
       const { name, email, password } = req.body;
       const data = {};
-      if (name) data.name = name;
-      if (email) data.email = email.toLowerCase();
-      if (password) data.passwordHash = await bcrypt.hash(password, 10);
+      if (name) data.name = String(name).trim().slice(0, 120);
+      if (email) {
+        if (!isValidEmail(email)) {
+          return res.status(400).json({ message: 'A valid email is required' });
+        }
+        data.email = email.toLowerCase();
+      }
+      if (password) {
+        assertPassword(password);
+        data.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      }
 
       const user = await prisma.user.update({
         where: { id: req.user.id },
@@ -98,11 +124,26 @@ const updateProfile = async (req, res) => {
 
     const { name, email, password, phone, address } = req.body;
     const data = {};
-    if (name) data.name = name;
-    if (email) data.email = email.toLowerCase();
-    if (phone) data.phone = phone;
+    if (name) data.name = String(name).trim().slice(0, 120);
+    if (email) {
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ message: 'A valid email is required' });
+      }
+      data.email = email.toLowerCase();
+    }
+    if (phone) {
+      if (!isValidEgyptianPhone(phone)) {
+        return res
+          .status(400)
+          .json({ message: 'Enter a valid Egyptian mobile number (01xxxxxxxxx)' });
+      }
+      data.phone = normalizeEgyptianPhone(phone);
+    }
     if (address) data.address = address;
-    if (password) data.passwordHash = await bcrypt.hash(password, 10);
+    if (password) {
+      assertPassword(password);
+      data.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    }
 
     const user = await prisma.user.update({
       where: { id: req.user.id },
@@ -110,7 +151,7 @@ const updateProfile = async (req, res) => {
     });
     res.json(sanitizeUser(user));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error, 'Could not update profile');
   }
 };
 

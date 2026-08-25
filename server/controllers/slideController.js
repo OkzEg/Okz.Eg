@@ -149,7 +149,6 @@ const deleteSlide = async (req, res) => {
       return res.status(400).json({ message: 'Slide id required' });
     }
 
-    // deleteMany is idempotent: a missing row is not an error (Prisma delete throws P2025).
     await prisma.slide.deleteMany({ where: { id } });
     cache.invalidate('slides');
     res.set('Cache-Control', 'no-store');

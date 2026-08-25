@@ -27,9 +27,11 @@ export default function StaffOrders() {
     try {
       const { data } = await api.patch(`/orders/${order.id}/status`, { status: 'confirmed' });
       setOrders((prev) => prev.map((o) => (o.id === order.id ? data : o)));
-      toast.success('Payment confirmed');
+      toast.success(
+        isDigitalPayment(order.paymentMethod) ? 'Payment confirmed' : 'Order confirmed'
+      );
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not confirm payment');
+      toast.error(err.response?.data?.message || 'Could not confirm order');
     } finally {
       setConfirmingId(null);
     }
@@ -55,8 +57,8 @@ export default function StaffOrders() {
       <div className="mb-6">
         <h1 className="page-title">Orders</h1>
         <p className="page-subtitle">
-          Cash orders confirm automatically. InstaPay / Online Wallet stay pending until you confirm
-          payment.
+          New orders stay pending until you confirm them. Digital payments also need a receipt
+          check; COD is no longer auto-confirmed (stops bot spam from locking stock).
         </p>
       </div>
       <div className="table-wrapper">
@@ -76,8 +78,7 @@ export default function StaffOrders() {
           </thead>
           <tbody>
             {orders.map((o) => {
-              const needsPaymentConfirm =
-                o.status === 'pending' && isDigitalPayment(o.paymentMethod);
+              const needsConfirm = o.status === 'pending';
               return (
                 <tr key={o.id}>
                   <td className="font-mono text-xs">{o.id.slice(0, 8)}</td>
@@ -111,16 +112,24 @@ export default function StaffOrders() {
                   <td>{new Date(o.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="flex flex-wrap items-center gap-1">
-                      {needsPaymentConfirm && (
+                      {needsConfirm && (
                         <button
                           type="button"
                           className="btn-wheat btn-sm"
                           disabled={confirmingId === o.id}
                           onClick={() => confirmPayment(o)}
-                          title="Confirm payment received"
+                          title={
+                            isDigitalPayment(o.paymentMethod)
+                              ? 'Confirm payment received'
+                              : 'Confirm order'
+                          }
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                          {confirmingId === o.id ? 'Confirming…' : 'Confirm payment'}
+                          {confirmingId === o.id
+                            ? 'Confirming…'
+                            : isDigitalPayment(o.paymentMethod)
+                              ? 'Confirm payment'
+                              : 'Confirm order'}
                         </button>
                       )}
                       <button

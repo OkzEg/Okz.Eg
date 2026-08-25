@@ -6,11 +6,11 @@ const {
   deleteEntry,
   financeOverview,
 } = require('../controllers/financeController');
-const { protect, adminOnly } = require('../middleware/authMiddleware');
+const { protect, adminOnly, requireFreshStaff } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.use(protect, adminOnly);
+router.use(protect, requireFreshStaff, adminOnly);
 
 router.get('/overview', financeOverview);
 router.get('/entries', listEntries);

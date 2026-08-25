@@ -1,12 +1,3 @@
-/**
- * Paste this into https://script.google.com (New project).
- * Deploy → New deployment → Web app
- *   Execute as: Me
- *   Who has access: Anyone
- * Put the web app URL in Railway as MAIL_WEBHOOK_URL
- * Put the same secret in MAIL_WEBHOOK_SECRET and in Script properties as MAIL_SECRET
- *   (File → Project settings → Script properties)
- */
 function doPost(e) {
   var result = { ok: false };
   try {

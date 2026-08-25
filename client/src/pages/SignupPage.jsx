@@ -136,7 +136,9 @@ export default function SignupPage() {
                 autoComplete="new-password"
                 enterKeyHint="next"
                 required
-                minLength={6}
+                minLength={8}
+                pattern="(?=.*[A-Za-z])(?=.*\d).{8,}"
+                title="At least 8 characters with a letter and a number"
                 className="auth-input pr-12"
                 value={form.password}
                 onChange={set('password')}

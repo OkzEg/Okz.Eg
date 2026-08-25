@@ -115,16 +115,16 @@ export default function StaffDeliveries() {
                         key={s}
                         type="button"
                         className={
-                          s === 'confirmed' && o.status === 'pending' && isDigitalPayment(o.paymentMethod)
+                          s === 'confirmed' && o.status === 'pending'
                             ? 'btn-wheat btn-sm'
                             : 'btn-outline btn-sm'
                         }
                         onClick={() => setStatus(o.id, s)}
                       >
-                        {s === 'confirmed' &&
-                        o.status === 'pending' &&
-                        isDigitalPayment(o.paymentMethod)
-                          ? 'Confirm payment'
+                        {s === 'confirmed' && o.status === 'pending'
+                          ? isDigitalPayment(o.paymentMethod)
+                            ? 'Confirm payment'
+                            : 'Confirm order'
                           : orderStatusLabel[s]}
                       </button>
                     ))}

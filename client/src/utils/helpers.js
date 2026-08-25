@@ -1,9 +1,7 @@
-/** Normalize Drive / remote image URLs for <img src> */
 export const getImageUrl = (path) => {
   if (!path) return '';
   if (path.startsWith('blob:') || path.startsWith('data:')) return path;
 
-  // Google Drive uc?export=view often fails in <img>; lh3 serves public files reliably.
   const isDriveRelated =
     /drive\.google\.com|drive\.usercontent\.google\.com|lh3\.googleusercontent\.com\/d\//.test(
       path
@@ -21,7 +19,6 @@ export const getImageUrl = (path) => {
   return path;
 };
 
-/** Cloudinary delivery transforms — smaller, modern formats, capped width. */
 export const optimizeImageUrl = (path, { width = 800, quality = 'auto' } = {}) => {
   const url = getImageUrl(path);
   if (!url || !url.includes('res.cloudinary.com/image/upload/')) return url;
@@ -75,7 +72,7 @@ export const PAYMENT_METHODS = [
   {
     value: 'Cash on Delivery',
     label: 'Cash on Delivery',
-    hint: 'Pay cash when your order arrives.',
+    hint: 'Pay cash when your order arrives. Orders stay pending until we confirm them.',
   },
   {
     value: 'InstaPay',
@@ -102,7 +99,6 @@ export const ONLINE_WALLET_NUMBER = String(
     import.meta.env.VITE_VODAFONE_CASH_NUMBER ||
     ''
 ).trim();
-/** @deprecated use ONLINE_WALLET_NUMBER */
 export const VODAFONE_CASH_NUMBER = ONLINE_WALLET_NUMBER;
 
 export const shippingFeeForGovernorate = (governorate) => {
@@ -160,7 +156,7 @@ export const parseSizes = (value) =>
     .filter(Boolean);
 
 export const orderStatusLabel = {
-  pending: 'Pending payment',
+  pending: 'Pending',
   confirmed: 'Confirmed',
   out_for_delivery: 'Out for delivery',
   delivered: 'Delivered',
@@ -168,7 +164,6 @@ export const orderStatusLabel = {
   problem: 'Problem',
 };
 
-/** Customer-facing labels — never expose internal payment-hold wording. */
 export const customerOrderStatusLabel = {
   pending: 'Order received',
   confirmed: 'Confirmed',

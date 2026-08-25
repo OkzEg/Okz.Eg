@@ -4,7 +4,6 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Accent — terracotta #b77239
         wheat: {
           DEFAULT: '#b77239',
           50: '#f8efe6',
@@ -15,7 +14,6 @@ export default {
           500: '#9a5d2e',
           600: '#7d4a24',
         },
-        // Charcoal scale anchored on #2b262c
         timber: {
           50: '#f5f1e8',
           100: '#ebe5d8',

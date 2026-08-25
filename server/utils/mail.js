@@ -67,9 +67,7 @@ const destroyTransporter = (transport = cachedTransport) => {
   if (transport) {
     try {
       transport.close();
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
   if (transport === cachedTransport) {
     cachedTransport = null;

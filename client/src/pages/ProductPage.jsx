@@ -499,7 +499,6 @@ export default function ProductPage() {
         <ProductReviews productId={product.id} />
       </div>
 
-      {/* Mobile sticky ATC */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-timber-200 bg-cream/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:px-4 lg:hidden">
         <div className="mx-auto flex max-w-7xl items-center gap-2">
           <div className="min-w-0 flex-1">

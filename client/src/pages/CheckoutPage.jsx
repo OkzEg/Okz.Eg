@@ -18,7 +18,9 @@ import {
   isDigitalPayment,
 } from '../utils/helpers';
 
-const MAX_RECEIPT_BYTES = 8 * 1024 * 1024;
+const MAX_RECEIPT_BYTES = 3 * 1024 * 1024;
+const TURNSTILE_SITE_KEY = String(import.meta.env.VITE_TURNSTILE_SITE_KEY || '').trim();
+const EGYPT_PHONE_RE = /^(?:\+?20)?0?1[0125]\d{8}$/;
 
 export default function CheckoutPage() {
   const { user } = useAuth();
@@ -27,6 +29,8 @@ export default function CheckoutPage() {
   const orderPlacedRef = useRef(false);
   const placingRef = useRef(false);
   const receiptInputRef = useRef(null);
+  const turnstileRef = useRef(null);
+  const turnstileWidgetId = useRef(null);
   const addr = user?.address || {};
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -39,16 +43,17 @@ export default function CheckoutPage() {
     country: addr.country || 'Egypt',
     paymentMethod: 'Cash on Delivery',
     couponCode: '',
+    website: '',
   });
   const [receiptFile, setReceiptFile] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [loading, setLoading] = useState(false);
   const shipping = calcShipping(subtotal, form.state);
   const total = subtotal + shipping;
   const needsReceipt = isDigitalPayment(form.paymentMethod);
 
   useEffect(() => {
-    // After a successful place-order we clear the cart — don't bounce to empty cart.
     if (!items.length && !orderPlacedRef.current && !loading) {
       navigate('/cart', { replace: true });
     }
@@ -63,6 +68,39 @@ export default function CheckoutPage() {
     setReceiptPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [receiptFile]);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !turnstileRef.current) return undefined;
+
+    const renderWidget = () => {
+      if (!window.turnstile || !turnstileRef.current || turnstileWidgetId.current != null) return;
+      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token) => setTurnstileToken(token),
+        'expired-callback': () => setTurnstileToken(''),
+        'error-callback': () => setTurnstileToken(''),
+      });
+    };
+
+    if (window.turnstile) {
+      renderWidget();
+      return undefined;
+    }
+
+    const existing = document.querySelector('script[data-okz-turnstile]');
+    if (existing) {
+      existing.addEventListener('load', renderWidget);
+      return () => existing.removeEventListener('load', renderWidget);
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    script.async = true;
+    script.dataset.okzTurnstile = '1';
+    script.addEventListener('load', renderWidget);
+    document.head.appendChild(script);
+    return () => script.removeEventListener('load', renderWidget);
+  }, []);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setAddress = (key, value) => setForm((current) => ({ ...current, [key]: value }));
@@ -86,7 +124,7 @@ export default function CheckoutPage() {
       return;
     }
     if (file.size > MAX_RECEIPT_BYTES) {
-      toast.error('Receipt image must be under 8 MB');
+      toast.error('Receipt image must be under 3 MB');
       e.target.value = '';
       return;
     }
@@ -108,11 +146,17 @@ export default function CheckoutPage() {
     if (!form.name.trim() || !form.phone.trim()) {
       return toast.error('Name and phone are required');
     }
+    if (!EGYPT_PHONE_RE.test(form.phone.replace(/\s+/g, ''))) {
+      return toast.error('Enter a valid Egyptian mobile (01xxxxxxxxx)');
+    }
     if (!form.email.trim()) {
       return toast.error('Email is required');
     }
     if (needsReceipt && !receiptFile) {
       return toast.error('Upload your transaction receipt screenshot before placing the order');
+    }
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      return toast.error('Complete the security check before placing the order');
     }
 
     const shippingAddress = {
@@ -144,17 +188,22 @@ export default function CheckoutPage() {
         shippingAddress,
         couponCode: String(form.couponCode || '').trim() || undefined,
         paymentReceiptUrl,
+        website: form.website,
+        turnstileToken: turnstileToken || undefined,
       };
 
       let data;
       if (user) {
-        ({ data } = await api.post('/orders', payload));
+        ({ data } = await api.post('/orders', {
+          ...payload,
+          contactName: form.name.trim(),
+          contactPhone: form.phone.trim(),
+          contactEmail: form.email.trim(),
+        }));
         if (form.phone && form.phone !== user.phone) {
           try {
             await api.put('/auth/profile', { phone: form.phone });
-          } catch {
-            /* non-blocking */
-          }
+          } catch {}
         }
       } else {
         ({ data } = await api.post('/orders/guest', {
@@ -168,9 +217,15 @@ export default function CheckoutPage() {
       orderPlacedRef.current = true;
       navigate('/order-success', { state: { order: data }, replace: true });
       clear();
-      toast.success('Order placed');
+      toast.success('Order placed — we will confirm it shortly');
     } catch (err) {
       placingRef.current = false;
+      setTurnstileToken('');
+      if (window.turnstile && turnstileWidgetId.current != null) {
+        try {
+          window.turnstile.reset(turnstileWidgetId.current);
+        } catch {}
+      }
       toast.error(err.response?.data?.message || err.message || 'Checkout failed');
     } finally {
       setLoading(false);
@@ -183,7 +238,23 @@ export default function CheckoutPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="font-display text-4xl text-timber-900 tracking-wide mb-6 sm:mb-8 sm:text-5xl">Checkout</h1>
 
-      <form onSubmit={submit} className="grid lg:grid-cols-5 gap-8">
+      <form onSubmit={submit} className="grid lg:grid-cols-5 gap-8" autoComplete="on">
+        <div
+          aria-hidden="true"
+          style={{ position: 'absolute', left: '-10000px', top: 'auto', width: 1, height: 1, overflow: 'hidden' }}
+        >
+          <label htmlFor="checkout-website">Website</label>
+          <input
+            id="checkout-website"
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={form.website}
+            onChange={set('website')}
+          />
+        </div>
+
         <div className="lg:col-span-3 space-y-4">
           <div className="card space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-timber-700">
@@ -203,6 +274,8 @@ export default function CheckoutPage() {
                   value={form.phone}
                   onChange={set('phone')}
                   placeholder="01xxxxxxxxx"
+                  pattern="^(?:\+?20)?0?1[0125]\d{8}$"
+                  title="Egyptian mobile: 01xxxxxxxxx"
                 />
               </div>
               <div>
@@ -307,7 +380,7 @@ export default function CheckoutPage() {
                 <input
                   ref={receiptInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   capture="environment"
                   className="sr-only"
                   onChange={onReceiptPick}
@@ -357,6 +430,12 @@ export default function CheckoutPage() {
                 placeholder="Optional"
               />
             </div>
+
+            {TURNSTILE_SITE_KEY ? (
+              <div className="pt-1">
+                <div ref={turnstileRef} />
+              </div>
+            ) : null}
           </div>
 
           {!user && (
@@ -435,7 +514,7 @@ export default function CheckoutPage() {
             <div className="space-y-2 text-xs text-timber-500">
               <p className="flex items-center gap-2">
                 <Truck className="h-3.5 w-3.5 shrink-0" />
-                Ships in 2–3 business days · Cash on delivery
+                Ships after we confirm your order · 2–3 business days
               </p>
               <p className="flex items-center gap-2">
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
@@ -449,7 +528,11 @@ export default function CheckoutPage() {
             <button
               type="submit"
               className="btn-wheat w-full py-3.5"
-              disabled={loading || (needsReceipt && !receiptFile)}
+              disabled={
+                loading ||
+                (needsReceipt && !receiptFile) ||
+                (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)
+              }
             >
               {loading ? 'Placing…' : 'Place order'}
             </button>

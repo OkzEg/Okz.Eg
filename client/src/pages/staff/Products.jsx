@@ -42,7 +42,6 @@ export default function StaffProducts() {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [loadingFolder, setLoadingFolder] = useState(false);
-  // Batch stock deltas so rapid +/- taps stay instant and send one request
   const stockQueue = useRef({});
 
   const load = () =>

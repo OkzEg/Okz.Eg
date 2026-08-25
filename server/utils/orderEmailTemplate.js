@@ -13,7 +13,6 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-/** Make Drive / Cloudinary / absolute URLs usable in email <img> tags. */
 const publicImageUrl = (path) => {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) {

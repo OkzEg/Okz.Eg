@@ -78,7 +78,6 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
   useEffect(() => {
     onClose?.();
-    // Close drawer on route change only (ignore onClose identity)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -92,12 +91,10 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="fixed top-0 left-0 z-40 hidden h-full w-64 flex-col bg-gradient-to-b from-timber-800 to-timber-700 shadow-2xl lg:flex">
         <NavPanel user={user} logout={logout} navigate={navigate} />
       </aside>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button

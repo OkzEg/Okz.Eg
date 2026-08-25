@@ -2,13 +2,33 @@ const prisma = require('../lib/prisma');
 const cache = require('../lib/cache');
 const { resolvePhotoLinks } = require('../utils/drivePhotos');
 
-const serializeProduct = (p) => ({
-  ...p,
-  price: Number(p.price),
-  cost: p.cost != null ? Number(p.cost) : 1000,
-  salePrice: p.salePrice != null ? Number(p.salePrice) : null,
-  sizeStock: p.sizeStock && typeof p.sizeStock === 'object' ? p.sizeStock : {},
-});
+const serializeProduct = (p, { includeCost = false } = {}) => {
+  const base = {
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    price: Number(p.price),
+    type: p.type,
+    photos: p.photos,
+    colors: p.colors,
+    sizes: p.sizes,
+    sizeStock: p.sizeStock && typeof p.sizeStock === 'object' ? p.sizeStock : {},
+    stock: p.stock,
+    isSaleActive: p.isSaleActive,
+    salePrice: p.salePrice != null ? Number(p.salePrice) : null,
+    sortOrder: p.sortOrder,
+    isBestSeller: p.isBestSeller,
+    bestSellerOrder: p.bestSellerOrder,
+    isHomeProduct: p.isHomeProduct,
+    homeOrder: p.homeOrder,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+  if (includeCost) {
+    base.cost = p.cost != null ? Number(p.cost) : 1000;
+  }
+  return base;
+};
 
 const normalizeSizeStock = (sizeStock) => {
   if (!sizeStock || typeof sizeStock !== 'object') return {};
@@ -74,7 +94,8 @@ const listProducts = async (req, res) => {
   try {
     const { type, q, limit, collection } = req.query;
     const take = Math.min(Number(limit) || 100, 100);
-    const useCache = !req.headers.authorization;
+    const includeCost = req.user && ['admin', 'ops'].includes(req.user.role);
+    const useCache = !includeCost;
     const cacheKey = `products:${type || ''}:${q || ''}:${take}:${collection || ''}`;
 
     const load = async () => {
@@ -83,9 +104,10 @@ const listProducts = async (req, res) => {
       if (collection === 'best-sellers') where.isBestSeller = true;
       if (collection === 'our-products') where.isHomeProduct = true;
       if (q) {
+        const term = String(q).trim().slice(0, 80);
         where.OR = [
-          { name: { contains: q, mode: 'insensitive' } },
-          { description: { contains: q, mode: 'insensitive' } },
+          { name: { contains: term, mode: 'insensitive' } },
+          { description: { contains: term, mode: 'insensitive' } },
         ];
       }
 
@@ -102,7 +124,7 @@ const listProducts = async (req, res) => {
         orderBy,
         take,
       });
-      return rows.map(serializeProduct);
+      return rows.map((row) => serializeProduct(row, { includeCost }));
     };
 
     const products = useCache
@@ -117,7 +139,8 @@ const listProducts = async (req, res) => {
     );
     res.json(products);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
@@ -131,14 +154,15 @@ const getProduct = async (req, res) => {
           where: { id: req.params.id },
           select: PRODUCT_SELECT,
         });
-        return row ? serializeProduct(row) : null;
+        return row ? serializeProduct(row, { includeCost: false }) : null;
       }
     );
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.set('Cache-Control', 'public, max-age=20, stale-while-revalidate=40');
     res.json(product);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
@@ -206,7 +230,7 @@ const createProduct = async (req, res) => {
       select: PRODUCT_SELECT,
     });
     bustProductCache();
-    res.status(201).json(serializeProduct(product));
+    res.status(201).json(serializeProduct(product, { includeCost: true }));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -268,7 +292,7 @@ const updateProduct = async (req, res) => {
       select: PRODUCT_SELECT,
     });
     bustProductCache();
-    res.json(serializeProduct(product));
+    res.json(serializeProduct(product, { includeCost: true }));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

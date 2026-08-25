@@ -2,12 +2,6 @@ const { PrismaClient } = require('@prisma/client');
 
 const globalForPrisma = globalThis;
 
-/**
- * Normalize Supabase/Prisma URL for a long-running Node server:
- * - Transaction pooler (6543) when pgbouncer is enabled
- * - Longer connect timeout (paused projects / flaky networks)
- * - Modest pool size so parallel queries work without exhausting Supavisor
- */
 const normalizeDatabaseUrl = (url, poolSize) => {
   if (!url) return url;
   try {

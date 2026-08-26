@@ -282,10 +282,10 @@ export default function StaffFinance() {
           <div className="card">
             <h2 className="font-semibold mb-2">How reimbursements work</h2>
             <p className="text-sm text-timber-500 mb-4">
-              If Omar pays an Uber from his pocket as a business advance, that amount is a company
-              expense and the other shareholders repay him by their ownership shares (Ziad 40%,
-              Khaled 30%). Shared company expenses (e.g. marketing paid together) are deducted from
-              profit only — nobody is reimbursed.
+              When someone pays an advance from their pocket, the others repay the full amount —
+              the payer does not chip in. Omar paid → Ziad 55%, Khaled 45%. Ziad paid → Omar 50%,
+              Khaled 50%. Khaled paid → Ziad 55%, Omar 45%. Shared company expenses only hit
+              profit; nobody reimburses those.
             </p>
             <div className="table-wrapper !mx-0">
               <table className="table">
@@ -328,7 +328,8 @@ export default function StaffFinance() {
               revenue, not paid back.
               <br />
               <strong>Shareholder advance</strong> — one partner paid from their pocket. Deducted
-              from revenue and reimbursed by the others according to ownership %.
+              from revenue; the others repay 100% of that amount (Omar → Ziad 55% / Khaled 45%;
+              Ziad → Omar/Khaled 50–50; Khaled → Ziad 55% / Omar 45%).
             </p>
             <button type="button" className="btn-wheat w-full sm:w-auto" onClick={openCreate}>
               <Plus className="h-4 w-4" />

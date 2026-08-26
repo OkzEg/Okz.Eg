@@ -1,5 +1,5 @@
 const prisma = require('../lib/prisma');
-const { SHAREHOLDERS, SHAREHOLDER_IDS } = require('../utils/shareholders');
+const { SHAREHOLDERS, SHAREHOLDER_IDS, repaySharesForPayer } = require('../utils/shareholders');
 
 const toNum = (v) => Number(v) || 0;
 
@@ -201,16 +201,20 @@ const financeOverview = async (req, res) => {
       const payer = SHAREHOLDERS.find((s) => s.id === entry.paidBy);
       if (!payer) continue;
       const amount = toNum(entry.amount);
-      for (const other of SHAREHOLDERS) {
-        if (other.id === payer.id) continue;
-        const shareAmount = amount * other.share;
-        owedBy[other.id] += shareAmount;
+      const repay = repaySharesForPayer(payer.id);
+      if (!repay) continue;
+
+      for (const [fromId, portion] of Object.entries(repay)) {
+        const from = SHAREHOLDERS.find((s) => s.id === fromId);
+        if (!from || from.id === payer.id) continue;
+        const shareAmount = amount * portion;
+        owedBy[from.id] += shareAmount;
         owedTo[payer.id] += shareAmount;
         settlements.push({
           entryId: entry.id,
           title: entry.title,
-          from: other.id,
-          fromName: other.name,
+          from: from.id,
+          fromName: from.name,
           to: payer.id,
           toName: payer.name,
           amount: Math.round(shareAmount * 100) / 100,

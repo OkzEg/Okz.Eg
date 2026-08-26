@@ -1,14 +1,19 @@
 const prisma = require('../lib/prisma');
+const { sendError } = require('../utils/safeError');
 
 const serializeReview = (review) => ({
   id: review.id,
   rating: review.rating,
   comment: review.comment,
   createdAt: review.createdAt,
-  user: {
-    id: review.user?.id,
-    name: review.user?.name || 'Customer',
-  },
+  guestName: review.guestName || null,
+  user: review.user
+    ? {
+        id: review.user.id,
+        name: review.user.name,
+      }
+    : null,
+  displayName: review.user?.name || review.guestName || 'Customer',
 });
 
 const summaryForProduct = async (productId) => {
@@ -17,12 +22,12 @@ const summaryForProduct = async (productId) => {
     _avg: { rating: true },
     _count: { _all: true },
   });
-    const count = agg._count._all || 0;
-    const avg = agg._avg.rating;
-    return {
-      average: count && avg != null ? Number(avg.toFixed(1)) : 0,
-      count,
-    };
+  const count = agg._count._all || 0;
+  const avg = agg._avg.rating;
+  return {
+    average: count && avg != null ? Number(avg.toFixed(1)) : 0,
+    count,
+  };
 };
 
 const listReviews = async (req, res) => {
@@ -47,19 +52,20 @@ const listReviews = async (req, res) => {
       reviews: reviews.map(serializeReview),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error);
   }
 };
 
 const createReview = async (req, res) => {
   try {
-    if (req.user.role !== 'customer') {
-      return res.status(403).json({ message: 'Only customers can leave reviews' });
+    if (req.user && req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Staff accounts cannot leave reviews' });
     }
 
     const productId = req.params.id;
     const rating = Math.trunc(Number(req.body.rating));
     const comment = String(req.body.comment || '').trim();
+    const guestName = String(req.body.guestName || req.body.name || '').trim().slice(0, 80);
 
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
       return res.status(400).json({ message: 'Rating must be between 1 and 5' });
@@ -77,17 +83,24 @@ const createReview = async (req, res) => {
     });
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
-    const existing = await prisma.review.findUnique({
-      where: { productId_userId: { productId, userId: req.user.id } },
-    });
-    if (existing) {
-      return res.status(400).json({ message: 'You already reviewed this product' });
+    let userId = null;
+    if (req.user?.id) {
+      userId = req.user.id;
+      const existing = await prisma.review.findUnique({
+        where: { productId_userId: { productId, userId } },
+      });
+      if (existing) {
+        return res.status(400).json({ message: 'You already reviewed this product' });
+      }
+    } else if (!guestName || guestName.length < 2) {
+      return res.status(400).json({ message: 'Name is required' });
     }
 
     const review = await prisma.review.create({
       data: {
         productId,
-        userId: req.user.id,
+        userId,
+        guestName: userId ? null : guestName,
         rating,
         comment,
       },
@@ -99,7 +112,7 @@ const createReview = async (req, res) => {
     if (error.code === 'P2002') {
       return res.status(400).json({ message: 'You already reviewed this product' });
     }
-    res.status(500).json({ message: error.message });
+    return sendError(res, error, 'Could not save review');
   }
 };
 
@@ -113,7 +126,7 @@ const deleteReview = async (req, res) => {
       return res.status(404).json({ message: 'Review not found' });
     }
 
-    const isOwner = review.userId === req.user.id;
+    const isOwner = review.userId && review.userId === req.user.id;
     const isAdmin = req.user.role === 'admin';
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: 'Not allowed to delete this review' });
@@ -122,7 +135,7 @@ const deleteReview = async (req, res) => {
     await prisma.review.delete({ where: { id: review.id } });
     res.json({ message: 'Review deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return sendError(res, error);
   }
 };
 

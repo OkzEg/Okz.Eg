@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Star, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../api/axios';
@@ -42,6 +41,7 @@ export default function ProductReviews({ productId }) {
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [guestName, setGuestName] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -66,15 +66,19 @@ export default function ProductReviews({ productId }) {
   }, [productId]);
 
   const mine = user ? reviews.find((r) => r.user?.id === user.id) : null;
-  const canWrite = user?.role === 'customer' && !mine;
+  const isStaff = user && user.role !== 'customer';
+  const canWrite = !isStaff && !mine;
 
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.post(`/products/${productId}/reviews`, { rating, comment });
+      const payload = { rating, comment };
+      if (!user) payload.guestName = guestName.trim();
+      await api.post(`/products/${productId}/reviews`, payload);
       toast.success('Thanks for your review');
       setComment('');
+      setGuestName('');
       setRating(5);
       load();
     } catch (err) {
@@ -117,6 +121,23 @@ export default function ProductReviews({ productId }) {
       {canWrite && (
         <form onSubmit={submit} className="mb-8 rounded-2xl border border-timber-200 bg-white p-4 sm:p-5">
           <p className="text-sm font-semibold text-timber-800">Write a review</p>
+          {!user && (
+            <div className="mt-3">
+              <label className="label" htmlFor="review-name">
+                Your name
+              </label>
+              <input
+                id="review-name"
+                required
+                minLength={2}
+                maxLength={80}
+                className="input"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                placeholder="First name"
+              />
+            </div>
+          )}
           <div className="mt-3">
             <Stars value={rating} onSelect={setRating} />
           </div>
@@ -136,17 +157,8 @@ export default function ProductReviews({ productId }) {
         </form>
       )}
 
-      {user && user.role !== 'customer' && (
-        <p className="mb-6 text-sm text-timber-500">Customer accounts can leave reviews.</p>
-      )}
-
-      {!user && (
-        <p className="mb-6 text-sm text-timber-500">
-          <Link to={`/login?redirect=${encodeURIComponent(`/product/${productId}`)}`} className="font-semibold text-wheat-500 underline-offset-2 hover:underline">
-            Sign in
-          </Link>{' '}
-          to leave a review.
-        </p>
+      {isStaff && (
+        <p className="mb-6 text-sm text-timber-500">Staff accounts cannot leave reviews.</p>
       )}
 
       {mine && (
@@ -161,7 +173,9 @@ export default function ProductReviews({ productId }) {
             <li key={review.id} className="rounded-2xl border border-timber-100 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-timber-800">{review.user?.name || 'Customer'}</p>
+                  <p className="font-semibold text-timber-800">
+                    {review.displayName || review.user?.name || review.guestName || 'Customer'}
+                  </p>
                   <p className="text-xs text-timber-400">
                     {new Date(review.createdAt).toLocaleDateString()}
                   </p>

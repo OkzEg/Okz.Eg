@@ -17,7 +17,7 @@ const router = express.Router();
 router.get('/', optionalProtect, listProducts);
 router.post('/resolve-photos', protect, adminOnly, resolvePhotos);
 router.get('/:id/reviews', listReviews);
-router.post('/:id/reviews', protect, reviewLimiter, createReview);
+router.post('/:id/reviews', optionalProtect, reviewLimiter, createReview);
 router.delete('/:id/reviews/:reviewId', protect, deleteReview);
 router.get('/:id', getProduct);
 router.post('/', protect, adminOnly, createProduct);

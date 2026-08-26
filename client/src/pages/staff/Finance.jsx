@@ -189,6 +189,9 @@ export default function StaffFinance() {
             </div>
             <div className="card space-y-2 text-sm">
               <h2 className="font-semibold text-timber-800">Profit per shareholder</h2>
+              <p className="text-xs text-timber-400 pb-1">
+                From operating profit only (advances settled under Shareholders)
+              </p>
               {(data.shareholders || []).map((s) => (
                 <Row
                   key={s.id}
@@ -232,8 +235,14 @@ export default function StaffFinance() {
       {data && tab === 'shareholders' && (
         <div className="space-y-6">
           {o && (
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-3 gap-4">
               <StatCard title="Company profit" value={formatMoney(o.profit)} icon={Wallet} tone="wheat" />
+              <StatCard
+                title="Operating profit"
+                value={formatMoney(o.operatingProfit)}
+                icon={Package}
+                tone="blue"
+              />
               <StatCard
                 title="Total revenue"
                 value={formatMoney(o.totalRevenue)}
@@ -259,8 +268,8 @@ export default function StaffFinance() {
                     {formatMoney(s.profitShare)}
                   </p>
                   <p className="mt-1 text-xs text-timber-400">
-                    {s.sharePercent}% of company profit
-                    {o ? ` (${formatMoney(o.profit)})` : ''}
+                    {s.sharePercent}% of operating profit
+                    {o ? ` (${formatMoney(o.operatingProfit)})` : ''}
                   </p>
                 </div>
                 <Row label="Owed to them (advances)" value={formatMoney(s.owedToThem)} />
@@ -282,10 +291,10 @@ export default function StaffFinance() {
           <div className="card">
             <h2 className="font-semibold mb-2">How reimbursements work</h2>
             <p className="text-sm text-timber-500 mb-4">
-              When someone pays an advance from their pocket, the others repay the full amount —
-              the payer does not chip in. Omar paid → Ziad 55%, Khaled 45%. Ziad paid → Omar 50%,
-              Khaled 50%. Khaled paid → Ziad 55%, Omar 45%. Shared company expenses only hit
-              profit; nobody reimburses those.
+              Each person’s profit is their % of operating profit (revenue − COGS − company
+              expenses). Shareholder advances are not split into profit — the others repay the
+              payer in full: Omar paid → Ziad 55% / Khaled 45%; Ziad paid → Omar/Khaled 50–50;
+              Khaled paid → Ziad 55% / Omar 45%.
             </p>
             <div className="table-wrapper !mx-0">
               <table className="table">

@@ -192,6 +192,8 @@ const financeOverview = async (req, res) => {
     const totalRevenue = orderRevenue + customRevenue;
     const totalExpenses = cogs + companyExpenses + advanceExpenses;
     const profit = totalRevenue - totalExpenses;
+    // Advances are settled via reimbursements — don't also allocate them into profit shares
+    const operatingProfit = totalRevenue - cogs - companyExpenses;
 
     const owedBy = Object.fromEntries(SHAREHOLDERS.map((s) => [s.id, 0]));
     const owedTo = Object.fromEntries(SHAREHOLDERS.map((s) => [s.id, 0]));
@@ -225,7 +227,7 @@ const financeOverview = async (req, res) => {
     const shareholders = SHAREHOLDERS.map((s) => ({
       ...s,
       sharePercent: Math.round(s.share * 100),
-      profitShare: Math.round(profit * s.share * 100) / 100,
+      profitShare: Math.round(operatingProfit * s.share * 100) / 100,
       owedToThem: Math.round(owedTo[s.id] * 100) / 100,
       theyOwe: Math.round(owedBy[s.id] * 100) / 100,
       netReimbursement: Math.round((owedTo[s.id] - owedBy[s.id]) * 100) / 100,
@@ -254,6 +256,7 @@ const financeOverview = async (req, res) => {
         advanceExpenses: Math.round(advanceExpenses * 100) / 100,
         totalExpenses: Math.round(totalExpenses * 100) / 100,
         profit: Math.round(profit * 100) / 100,
+        operatingProfit: Math.round(operatingProfit * 100) / 100,
         marginPercent:
           totalRevenue > 0 ? Math.round((profit / totalRevenue) * 1000) / 10 : 0,
       },

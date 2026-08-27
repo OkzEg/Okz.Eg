@@ -71,18 +71,18 @@ export const SHIPPING_FEE_OTHER = 110;
 export const PAYMENT_METHODS = [
   {
     value: 'Cash on Delivery',
-    label: 'الدفع عند الاستلام (COD)',
-    hint: 'موصى به — ادفع كاش للمندوب بعد ما تفحص المنتج',
+    label: 'Cash on Delivery',
+    hint: 'Recommended — pay cash when your order arrives. No transfer, no receipt.',
   },
   {
     value: 'InstaPay',
     label: 'InstaPay',
-    hint: 'حوّل عبر إنستاباي ثم ارفع صورة الإيصال قبل تأكيد الطلب',
+    hint: 'Transfer via InstaPay, then upload your receipt before placing the order.',
   },
   {
     value: 'Online Wallet',
     label: 'Online Wallet',
-    hint: 'حوّل عبر المحفظة ثم ارفع صورة الإيصال قبل تأكيد الطلب',
+    hint: 'Transfer via Online Wallet, then upload your receipt before placing the order.',
   },
 ];
 

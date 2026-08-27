@@ -248,22 +248,22 @@ export default function CartPage() {
             className="btn-wheat w-full py-3.5"
             onClick={() => navigate('/checkout')}
           >
-            Checkout — الدفع عند الاستلام
+            Checkout — pay on delivery
           </button>
 
           <div className="space-y-2 text-xs text-timber-500">
-            <p className="flex items-start gap-2" dir="rtl" lang="ar">
+            <p className="flex items-start gap-2">
               <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span className="text-right">
-                الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام · ضيف بدون حساب
+              <span>
+                Cairo & Giza shipping EGP 80 · delivers in 2–3 days · guest checkout OK
               </span>
             </p>
-            <p className="flex items-start gap-2" dir="rtl" lang="ar">
+            <p className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span className="text-right">
-                مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني ·{' '}
+              <span>
+                Wrong size? Free exchange ·{' '}
                 <Link to="/returns" className="underline-offset-2 hover:underline">
-                  سياسة الإرجاع
+                  Returns policy
                 </Link>
               </span>
             </p>

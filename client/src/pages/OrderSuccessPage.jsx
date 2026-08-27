@@ -63,7 +63,7 @@ export default function OrderSuccessPage() {
   const orderRef = order.id.slice(0, 8).toUpperCase();
   const whatsappHref = WHATSAPP
     ? `https://wa.me/${String(WHATSAPP).replace(/\D/g, '')}?text=${encodeURIComponent(
-        `مرحبا OKZ — طلبت الأوردر ${orderRef} ومحتاج تأكيد.`
+        `Hi OKZ — I just placed order ${orderRef}. Can you confirm it?`
       )}`
     : null;
 
@@ -84,26 +84,23 @@ export default function OrderSuccessPage() {
         <SuccessMark />
 
         <p className="success-fade mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-wheat">
-          تم استلام طلبك
+          Order received
         </p>
         <h1 className="success-fade success-fade--delay font-display mt-2 text-5xl tracking-wide text-timber-900 sm:text-6xl">
-          شكرًا{name ? `، ${name.split(' ')[0]}` : ''}
+          Thank you{name ? `, ${name.split(' ')[0]}` : ''}
         </h1>
-        <p
-          dir="rtl"
-          lang="ar"
-          className="success-fade success-fade--delay2 mx-auto mt-4 max-w-md text-base leading-relaxed text-timber-600 sm:text-lg text-right"
-        >
+        <p className="success-fade success-fade--delay2 mx-auto mt-4 max-w-md text-base leading-relaxed text-timber-600 sm:text-lg">
           {isCod ? (
             <>
-              هتدفع كاش لما الطلب يوصلك. هنأكد الطلب خلال{' '}
-              <span className="font-semibold text-timber-800">١٢ ساعة</span>، والشحن خلال ٢-٣ أيام
-              عمل.
+              You’re set — pay cash when it arrives. We’ll confirm your order within{' '}
+              <span className="font-semibold text-timber-800">12 hours</span>, then ship in 2–3
+              business days.
             </>
           ) : (
             <>
-              طلبك وصلنا. هنأكد خلال{' '}
-              <span className="font-semibold text-timber-800">١٢ ساعة</span>، والشحن خلال ٢-٣ أيام عمل.
+              Your order is in. We’ll confirm within{' '}
+              <span className="font-semibold text-timber-800">12 hours</span>, then ship in 2–3
+              business days.
             </>
           )}
         </p>
@@ -115,8 +112,8 @@ export default function OrderSuccessPage() {
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-timber-500">Payment</span>
-            <span className="text-timber-800" dir="rtl" lang="ar">
-              {isCod ? 'الدفع عند الاستلام' : order.paymentMethod}
+            <span className="text-timber-800">
+              {isCod ? 'Cash on delivery' : order.paymentMethod}
             </span>
           </div>
           <div className="flex justify-between gap-4 border-t border-timber-100 pt-3 text-base font-semibold text-timber-900">
@@ -144,21 +141,17 @@ export default function OrderSuccessPage() {
             target="_blank"
             rel="noreferrer"
             className="btn-wheat mt-6 inline-flex w-full min-h-12 items-center justify-center gap-2 px-6 py-3"
-            dir="rtl"
-            lang="ar"
           >
             <MessageCircle className="h-4 w-4" />
-            تأكيد الطلب على واتساب
+            Confirm on WhatsApp
           </a>
         ) : (
           <Link
             to="/contact"
             className="btn-wheat mt-6 inline-flex w-full min-h-12 items-center justify-center gap-2 px-6 py-3"
-            dir="rtl"
-            lang="ar"
           >
             <MessageCircle className="h-4 w-4" />
-            تواصل معانا لتأكيد الطلب
+            Contact us to confirm
           </Link>
         )}
 

@@ -21,8 +21,8 @@ export default function AddressFields({
     return (
       <div className="grid gap-4">
         <div>
-          <label htmlFor={`${idPrefix}-state`} className="label" dir="rtl" lang="ar">
-            المحافظة
+          <label htmlFor={`${idPrefix}-state`} className="label">
+            Governorate
           </label>
           <select
             id={`${idPrefix}-state`}
@@ -33,7 +33,7 @@ export default function AddressFields({
             onChange={onGovernorate}
           >
             <option value="" disabled>
-              اختر المحافظة
+              Select governorate
             </option>
             {values.state && !EGYPT_GOVERNORATES.includes(values.state) && (
               <option value={values.state}>{values.state}</option>
@@ -47,8 +47,8 @@ export default function AddressFields({
         </div>
 
         <div>
-          <label htmlFor={`${idPrefix}-street`} className="label" dir="rtl" lang="ar">
-            العنوان التفصيلي
+          <label htmlFor={`${idPrefix}-street`} className="label">
+            Detailed address
           </label>
           <textarea
             id={`${idPrefix}-street`}
@@ -58,8 +58,7 @@ export default function AddressFields({
             className={`${inputClass} min-h-[5.5rem] resize-y`}
             value={values.street || ''}
             onChange={field('street')}
-            placeholder="الشارع، رقم العقار، الدور، علامة مميزة…"
-            dir="auto"
+            placeholder="Street, building, floor, landmark…"
           />
         </div>
       </div>

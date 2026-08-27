@@ -83,9 +83,9 @@ const careByType = {
 };
 
 const fitTipByType = {
-  shoe: 'مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني',
+  shoe: 'Sure about your size? Wrong fit gets a free exchange.',
   belt: 'Measure your usual waist and match the chart.',
-  default: 'مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني',
+  default: 'Sure about your size? Wrong fit gets a free exchange.',
 };
 
 function TrustRow({ itemPrice }) {
@@ -97,27 +97,36 @@ function TrustRow({ itemPrice }) {
     <ul className="mt-5 space-y-2.5 rounded-2xl border border-timber-100 bg-white/80 px-4 py-3.5 text-sm text-timber-600">
       <li className="flex items-start gap-2.5">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
-        <span dir="rtl" lang="ar" className="text-right leading-relaxed">
-          معاينة المنتج وافحصه قبل ما تدفع للمندوب
+        <span>
+          <span className="font-semibold text-timber-800">Inspect before you pay</span>
+          {' — '}check with the courier, then pay cash on delivery.
         </span>
       </li>
       <li className="flex items-start gap-2.5">
         <Truck className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
-        <span dir="rtl" lang="ar" className="text-right leading-relaxed">
-          الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام
+        <span>
+          Cairo & Giza shipping EGP 80 · delivers in 2–3 days
           {needsMore ? (
-            <span className="block mt-1 text-xs text-timber-500" dir="ltr">
-              +{formatMoney(remaining)} for free shipping
-            </span>
+            <>
+              {' · '}
+              <span className="font-semibold text-timber-800">
+                add {formatMoney(remaining)} for free shipping
+              </span>
+            </>
+          ) : price >= FREE_SHIPPING_MIN ? (
+            <>
+              {' · '}
+              <span className="font-semibold text-timber-800">free shipping unlocked</span>
+            </>
           ) : null}
         </span>
       </li>
       <li className="flex items-start gap-2.5">
         <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
-        <span dir="rtl" lang="ar" className="text-right leading-relaxed">
-          مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني ·{' '}
+        <span>
+          Wrong size? Free exchange ·{' '}
           <Link to="/returns" className="font-semibold text-timber-800 underline-offset-2 hover:underline">
-            سياسة الإرجاع
+            Returns policy
           </Link>
         </span>
       </li>
@@ -194,7 +203,7 @@ export default function ProductPage() {
     setSizeError(true);
     stickySizeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     sizeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    toast.error('من فضلك اختر المقاس أولاً');
+    toast.error('Please select a size first');
     return false;
   };
 
@@ -326,15 +335,11 @@ export default function ProductPage() {
                 </span>
               )}
             </div>
-            <p
-              dir="rtl"
-              lang="ar"
-              className="mt-2 inline-flex items-center rounded-full bg-wheat-50 px-2.5 py-1 text-[11px] font-semibold text-timber-800"
-            >
-              معاينة المنتج وافحصه قبل ما تدفع للمندوب
+            <p className="mt-2 inline-flex items-center rounded-full bg-wheat-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-timber-800">
+              Inspect before you pay — COD
             </p>
-            <p dir="rtl" lang="ar" className="mt-2 text-sm text-timber-500">
-              الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام
+            <p className="mt-2 text-sm text-timber-500">
+              Cairo & Giza shipping EGP 80 · delivers in 2–3 days
             </p>
 
             {product.colors?.length > 0 && (
@@ -368,7 +373,7 @@ export default function ProductPage() {
               <div ref={sizeSectionRef} className="mt-7">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-timber-700">
-                    Size / المقاس
+                    Size
                   </span>
                   <button
                     type="button"
@@ -378,17 +383,10 @@ export default function ProductPage() {
                     Size chart
                   </button>
                 </div>
-                <p dir="rtl" lang="ar" className="mb-3 text-sm text-timber-500 text-right">
-                  {fitTip}
-                </p>
+                <p className="mb-3 text-sm text-timber-500">{fitTip}</p>
                 {sizeError && (
-                  <p
-                    dir="rtl"
-                    lang="ar"
-                    className="mb-2 text-sm font-semibold text-wheat-600"
-                    role="alert"
-                  >
-                    من فضلك اختر المقاس أولاً
+                  <p className="mb-2 text-sm font-semibold text-wheat-600" role="alert">
+                    Please select a size first
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
@@ -462,12 +460,10 @@ export default function ProductPage() {
               </button>
               <button
                 type="button"
-                className="btn-wheat flex-1 py-3.5 text-sm font-bold tracking-[0.04em]"
+                className="btn-wheat flex-1 py-3.5 text-sm font-bold uppercase tracking-[0.14em]"
                 onClick={() => add(true)}
-                dir="rtl"
-                lang="ar"
               >
-                شراء الآن — الدفع عند الاستلام
+                Buy now — pay on delivery
               </button>
             </div>
 
@@ -550,12 +546,12 @@ export default function ProductPage() {
                 open={openSection === 'delivery'}
                 onToggle={() => toggleSection('delivery')}
               >
-                <p dir="rtl" lang="ar" className="text-sm leading-relaxed text-right">
-                  الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام · باقي المحافظات ١١٠ ج.م ·
-                  مجاني فوق {formatMoney(FREE_SHIPPING_MIN)}
+                <p className="text-sm leading-relaxed uppercase tracking-wide text-[12px]">
+                  Cairo & Giza shipping EGP 80 · delivers in 2–3 days · other governorates EGP 110 ·
+                  free over {formatMoney(FREE_SHIPPING_MIN)}
                 </p>
-                <p dir="rtl" lang="ar" className="mt-2 text-sm text-timber-500 text-right">
-                  معاينة المنتج وافحصه قبل ما تدفع للمندوب
+                <p className="mt-2 text-sm text-timber-500">
+                  Inspect your order with the courier before you pay — cash on delivery.
                 </p>
               </Accordion>
             </div>
@@ -570,13 +566,8 @@ export default function ProductPage() {
           {needsSize && (
             <div ref={stickySizeRef}>
               {sizeError && (
-                <p
-                  dir="rtl"
-                  lang="ar"
-                  className="mb-1.5 text-center text-xs font-semibold text-wheat-600"
-                  role="alert"
-                >
-                  من فضلك اختر المقاس أولاً
+                <p className="mb-1.5 text-center text-xs font-semibold text-wheat-600" role="alert">
+                  Please select a size first
                 </p>
               )}
               <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -606,7 +597,7 @@ export default function ProductPage() {
               <p className="truncate text-sm font-semibold text-timber-900">{product.name}</p>
               <p className="text-sm tabular-nums text-timber-600">
                 {formatMoney(price)}
-                {size ? ` · ${size}` : needsSize ? ' · اختر المقاس' : ''}
+                {size ? ` · Size ${size}` : needsSize ? ' · Pick a size' : ''}
               </p>
             </div>
             <button
@@ -619,13 +610,11 @@ export default function ProductPage() {
             </button>
             <button
               type="button"
-              className="btn-wheat min-h-12 max-w-[58%] shrink-0 px-3 py-2.5 text-[12px] font-bold leading-snug sm:max-w-none sm:px-4 sm:text-[13px]"
+              className="btn-wheat min-h-12 max-w-[58%] shrink-0 px-3 py-2.5 text-[12px] font-bold leading-snug uppercase tracking-[0.08em] sm:max-w-none sm:px-4 sm:text-[13px]"
               onClick={() => add(true)}
-              dir="rtl"
-              lang="ar"
             >
-              <span className="sm:hidden">شراء الآن · COD</span>
-              <span className="hidden sm:inline">شراء الآن — الدفع عند الاستلام</span>
+              <span className="sm:hidden">Buy now · COD</span>
+              <span className="hidden sm:inline">Buy now — pay on delivery</span>
             </button>
           </div>
         </div>

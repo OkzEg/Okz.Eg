@@ -63,7 +63,7 @@ export default function OrderSuccessPage() {
   const orderRef = order.id.slice(0, 8).toUpperCase();
   const whatsappHref = WHATSAPP
     ? `https://wa.me/${String(WHATSAPP).replace(/\D/g, '')}?text=${encodeURIComponent(
-        `Hi OKZ — I just placed order ${orderRef}. Can you confirm it?`
+        `مرحبا OKZ — طلبت الأوردر ${orderRef} ومحتاج تأكيد.`
       )}`
     : null;
 
@@ -84,23 +84,26 @@ export default function OrderSuccessPage() {
         <SuccessMark />
 
         <p className="success-fade mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-wheat">
-          Order received
+          تم استلام طلبك
         </p>
         <h1 className="success-fade success-fade--delay font-display mt-2 text-5xl tracking-wide text-timber-900 sm:text-6xl">
-          Thank you{name ? `, ${name.split(' ')[0]}` : ''}
+          شكرًا{name ? `، ${name.split(' ')[0]}` : ''}
         </h1>
-        <p className="success-fade success-fade--delay2 mx-auto mt-4 max-w-md text-base leading-relaxed text-timber-600 sm:text-lg">
+        <p
+          dir="rtl"
+          lang="ar"
+          className="success-fade success-fade--delay2 mx-auto mt-4 max-w-md text-base leading-relaxed text-timber-600 sm:text-lg text-right"
+        >
           {isCod ? (
             <>
-              You’re set — pay cash when it arrives. We’ll confirm your order within{' '}
-              <span className="font-semibold text-timber-800">12 hours</span>, then ship in 2–3
-              business days.
+              هتدفع كاش لما الطلب يوصلك. هنأكد الطلب خلال{' '}
+              <span className="font-semibold text-timber-800">١٢ ساعة</span>، والشحن خلال ٢-٣ أيام
+              عمل.
             </>
           ) : (
             <>
-              Your order is in. We’ll confirm within{' '}
-              <span className="font-semibold text-timber-800">12 hours</span>, then ship in 2–3
-              business days.
+              طلبك وصلنا. هنأكد خلال{' '}
+              <span className="font-semibold text-timber-800">١٢ ساعة</span>، والشحن خلال ٢-٣ أيام عمل.
             </>
           )}
         </p>
@@ -112,8 +115,8 @@ export default function OrderSuccessPage() {
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-timber-500">Payment</span>
-            <span className="text-timber-800">
-              {isCod ? 'Cash on delivery' : order.paymentMethod}
+            <span className="text-timber-800" dir="rtl" lang="ar">
+              {isCod ? 'الدفع عند الاستلام' : order.paymentMethod}
             </span>
           </div>
           <div className="flex justify-between gap-4 border-t border-timber-100 pt-3 text-base font-semibold text-timber-900">
@@ -135,20 +138,32 @@ export default function OrderSuccessPage() {
           </div>
         )}
 
-        {whatsappHref && (
+        {whatsappHref ? (
           <a
             href={whatsappHref}
             target="_blank"
             rel="noreferrer"
-            className="mt-6 inline-flex items-center justify-center gap-2 text-sm font-medium text-timber-700 underline-offset-2 hover:underline"
+            className="btn-wheat mt-6 inline-flex w-full min-h-12 items-center justify-center gap-2 px-6 py-3"
+            dir="rtl"
+            lang="ar"
           >
             <MessageCircle className="h-4 w-4" />
-            Message us on WhatsApp
+            تأكيد الطلب على واتساب
           </a>
+        ) : (
+          <Link
+            to="/contact"
+            className="btn-wheat mt-6 inline-flex w-full min-h-12 items-center justify-center gap-2 px-6 py-3"
+            dir="rtl"
+            lang="ar"
+          >
+            <MessageCircle className="h-4 w-4" />
+            تواصل معانا لتأكيد الطلب
+          </Link>
         )}
 
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link to="/shop" className="btn-wheat min-h-12 px-6 py-3">
+          <Link to="/shop" className="btn-outline min-h-12 px-6 py-3">
             Continue shopping
           </Link>
           <Link to="/" className="btn-outline min-h-12 px-6 py-3">

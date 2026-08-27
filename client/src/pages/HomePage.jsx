@@ -105,11 +105,11 @@ export default function HomePage() {
       <section className="bg-timber-700 text-white py-14 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid md:grid-cols-3 gap-8 text-center">
           {[
-            ['Cash on delivery', 'Pay when your order arrives — no account needed'],
-            ['Ships in 2–3 days', 'Cairo & Giza EGP 80 · free over EGP 3,000'],
-            ['14-day returns', 'Free size exchange · easy WhatsApp support'],
+            ['الدفع عند الاستلام', 'معاينة المنتج وافحصه قبل ما تدفع للمندوب'],
+            ['الشحن ٨٠ ج.م', 'للقاهرة والجيزة · توصيل خلال ٢-٣ أيام'],
+            ['استبدال مجاني', 'مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني'],
           ].map(([t, d]) => (
-            <div key={t}>
+            <div key={t} dir="rtl" lang="ar">
               <h3 className="font-display text-2xl tracking-wide text-wheat">{t}</h3>
               <p className="mt-2 text-timber-300 text-sm">{d}</p>
             </div>

@@ -59,10 +59,12 @@ export default function StoreHeader() {
             : 'bg-transparent'
         }`}
       >
-        <div className="bg-timber-800 px-3 py-2 text-center text-[10px] font-medium uppercase leading-snug tracking-[0.12em] text-cream sm:px-4 sm:text-[11px] sm:tracking-[0.18em]">
-          <span className="sm:hidden">COD · Ships 2–3 days · Free over EGP 3,000</span>
-          <span className="hidden sm:inline">
-            Cash on delivery · Ships in 2–3 days · Free shipping over EGP 3,000 · Guest checkout
+        <div className="bg-timber-800 px-3 py-2 text-center text-[11px] font-medium leading-snug text-cream sm:px-4 sm:text-[12px]">
+          <span dir="rtl" lang="ar" className="sm:hidden">
+            الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل ٢-٣ أيام · معاينة قبل الدفع
+          </span>
+          <span dir="rtl" lang="ar" className="hidden sm:inline">
+            معاينة المنتج وافحصه قبل ما تدفع للمندوب · الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام
           </span>
         </div>
         <div className="relative mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-2 px-4 sm:h-[96px] sm:gap-4 sm:px-8">

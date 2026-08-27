@@ -103,7 +103,7 @@ export default function CheckoutPage() {
   }, []);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
-  const setAddress = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const setAddress = (patch) => setForm((current) => ({ ...current, ...patch }));
 
   const clearReceipt = () => {
     setReceiptFile(null);
@@ -144,13 +144,16 @@ export default function CheckoutPage() {
     if (placingRef.current || orderPlacedRef.current) return;
     if (!items.length) return toast.error('Cart is empty');
     if (!form.name.trim() || !form.phone.trim()) {
-      return toast.error('Name and phone are required');
+      return toast.error('الاسم ورقم الموبايل مطلوبين');
     }
     if (!EGYPT_PHONE_RE.test(form.phone.replace(/\s+/g, ''))) {
-      return toast.error('Enter a valid Egyptian mobile (01xxxxxxxxx)');
+      return toast.error('أدخل رقم موبايل مصري صحيح (01xxxxxxxxx)');
     }
-    if (!form.email.trim()) {
-      return toast.error('Email is required');
+    if (!form.street.trim() || !form.state.trim()) {
+      return toast.error('المحافظة والعنوان التفصيلي مطلوبين');
+    }
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      return toast.error('البريد الإلكتروني غير صحيح — اتركه فاضي أو صحّحه');
     }
     if (needsReceipt && !receiptFile) {
       return toast.error('Upload your transaction receipt screenshot before placing the order');
@@ -161,10 +164,10 @@ export default function CheckoutPage() {
 
     const shippingAddress = {
       street: form.street,
-      city: form.city,
+      city: form.city || form.state,
       state: form.state,
       zip: form.zip,
-      country: form.country,
+      country: form.country || 'Egypt',
     };
 
     const orderItems = items.map((i) => ({
@@ -198,7 +201,7 @@ export default function CheckoutPage() {
           ...payload,
           contactName: form.name.trim(),
           contactPhone: form.phone.trim(),
-          contactEmail: form.email.trim(),
+          contactEmail: form.email.trim() || undefined,
         }));
         if (form.phone && form.phone !== user.phone) {
           try {
@@ -210,7 +213,7 @@ export default function CheckoutPage() {
           ...payload,
           guestName: form.name.trim(),
           guestPhone: form.phone.trim(),
-          guestEmail: form.email.trim(),
+          guestEmail: form.email.trim() || undefined,
         }));
       }
 
@@ -257,21 +260,36 @@ export default function CheckoutPage() {
 
         <div className="lg:col-span-3 space-y-4">
           <div className="rounded-xl border border-wheat-200 bg-wheat-50/70 px-4 py-3 text-sm text-timber-700">
-            <span className="font-semibold text-timber-900">Guest checkout</span>
-            {' — '}no account needed. Cash on delivery is selected by default.
+            <p dir="rtl" lang="ar" className="font-semibold text-timber-900 text-right">
+              معاينة المنتج وافحصه قبل ما تدفع للمندوب
+            </p>
+            <p dir="rtl" lang="ar" className="mt-1 text-right text-timber-600">
+              الدفع عند الاستلام مفعّل تلقائيًا — مش محتاج حساب
+            </p>
           </div>
 
           <div className="card space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-timber-700">
-              Contact
+              بيانات التوصيل
             </h2>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="label">Full name</label>
-                <input required className="input" value={form.name} onChange={set('name')} />
+            <div className="grid gap-4">
+              <div>
+                <label className="label" dir="rtl" lang="ar">
+                  الاسم بالكامل
+                </label>
+                <input
+                  required
+                  className="input"
+                  value={form.name}
+                  onChange={set('name')}
+                  autoComplete="name"
+                  dir="auto"
+                />
               </div>
               <div>
-                <label className="label">Phone</label>
+                <label className="label" dir="rtl" lang="ar">
+                  رقم الموبايل
+                </label>
                 <input
                   required
                   type="tel"
@@ -281,31 +299,33 @@ export default function CheckoutPage() {
                   placeholder="01xxxxxxxxx"
                   pattern="^(?:\+?20)?0?1[0125]\d{8}$"
                   title="Egyptian mobile: 01xxxxxxxxx"
+                  inputMode="tel"
+                  autoComplete="tel"
                 />
               </div>
-              <div>
-                <label className="label">Email</label>
+            </div>
+            <AddressFields
+              idPrefix="checkout"
+              values={form}
+              onChange={setAddress}
+              compact
+            />
+            <details className="rounded-lg border border-timber-100 bg-cream/40 px-3 py-2">
+              <summary className="cursor-pointer text-sm text-timber-500" dir="rtl" lang="ar">
+                بريد إلكتروني (اختياري) — لتأكيد الطلب
+              </summary>
+              <div className="mt-3">
                 <input
-                  required
                   type="email"
                   className="input"
                   value={form.email}
                   onChange={set('email')}
                   disabled={Boolean(user)}
+                  placeholder="name@email.com"
+                  autoComplete="email"
                 />
               </div>
-            </div>
-          </div>
-
-          <div className="card space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-timber-700">
-              Shipping address
-            </h2>
-            <AddressFields
-              idPrefix="checkout"
-              values={form}
-              onChange={setAddress}
-            />
+            </details>
           </div>
 
           <div className="card space-y-4">
@@ -335,7 +355,7 @@ export default function CheckoutPage() {
                           {method.label}
                           {method.value === 'Cash on Delivery' ? (
                             <span className="ms-2 rounded-full bg-wheat-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-timber-800">
-                              Recommended
+                              موصى به
                             </span>
                           ) : null}
                         </span>
@@ -431,15 +451,19 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <div>
-              <label className="label">Promo code</label>
-              <input
-                className="input"
-                value={form.couponCode}
-                onChange={set('couponCode')}
-                placeholder="Optional"
-              />
-            </div>
+            <details className="rounded-lg border border-timber-100 bg-cream/40 px-3 py-2">
+              <summary className="cursor-pointer text-sm text-timber-500">
+                Promo code (optional)
+              </summary>
+              <div className="mt-3">
+                <input
+                  className="input"
+                  value={form.couponCode}
+                  onChange={set('couponCode')}
+                  placeholder="Optional"
+                />
+              </div>
+            </details>
 
             {TURNSTILE_SITE_KEY ? (
               <div className="pt-1">
@@ -449,10 +473,10 @@ export default function CheckoutPage() {
           </div>
 
           {!user && (
-            <p className="text-sm text-timber-500">
-              Ordering as a guest. Already shopped with us?{' '}
+            <p className="text-sm text-timber-500" dir="rtl" lang="ar">
+              بتطلب كضيف.{' '}
               <Link to="/login?redirect=/checkout" className="text-wheat-500 underline-offset-2 hover:underline">
-                Sign in
+                عندك حساب؟ سجّل دخول
               </Link>
             </p>
           )}
@@ -521,19 +545,22 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-2 text-xs text-timber-500">
-              <p className="flex items-center gap-2">
-                <Truck className="h-3.5 w-3.5 shrink-0" />
-                {form.paymentMethod === 'Cash on Delivery'
-                  ? 'Pay cash on delivery · ships in 2–3 business days'
-                  : 'We’ll confirm payment, then ship in 2–3 business days'}
+              <p className="flex items-start gap-2" dir="rtl" lang="ar">
+                <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span className="text-right">
+                  {form.paymentMethod === 'Cash on Delivery'
+                    ? 'ادفع كاش عند الاستلام · الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل ٢-٣ أيام'
+                    : 'هنأكد الدفع وبعدين نشحن خلال ٢-٣ أيام'}
+                </span>
               </p>
-              <p className="flex items-center gap-2">
-                <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                <Link to="/returns" className="underline-offset-2 hover:underline">
-                  14-day returns
-                </Link>
-                {' · '}
-                free size exchange
+              <p className="flex items-start gap-2" dir="rtl" lang="ar">
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span className="text-right">
+                  معاينة المنتج وافحصه قبل ما تدفع للمندوب ·{' '}
+                  <Link to="/returns" className="underline-offset-2 hover:underline">
+                    استبدال مجاني
+                  </Link>
+                </span>
               </p>
             </div>
 
@@ -545,12 +572,14 @@ export default function CheckoutPage() {
                 (needsReceipt && !receiptFile) ||
                 (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)
               }
+              dir="rtl"
+              lang="ar"
             >
               {loading
-                ? 'Placing…'
+                ? 'جاري تأكيد الطلب…'
                 : form.paymentMethod === 'Cash on Delivery'
-                  ? 'Place COD order'
-                  : 'Place order'}
+                  ? 'تأكيد الطلب — الدفع عند الاستلام'
+                  : 'تأكيد الطلب'}
             </button>
             {needsReceipt && !receiptFile && (
               <p className="text-center text-xs text-timber-500">
@@ -558,8 +587,8 @@ export default function CheckoutPage() {
               </p>
             )}
             {!needsReceipt && (
-              <p className="text-center text-xs text-timber-500">
-                No payment now — you pay when the order arrives
+              <p dir="rtl" lang="ar" className="text-center text-xs text-timber-500">
+                مفيش دفع دلوقتي — هتدفع لما الطلب يوصلك
               </p>
             )}
           </div>

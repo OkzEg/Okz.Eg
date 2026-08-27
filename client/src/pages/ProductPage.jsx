@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -14,7 +14,13 @@ import {
 import api from '../api/axios';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
-import { formatMoney, optimizeImageUrl, getAvailableStock, PRODUCT_TYPES, FREE_SHIPPING_MIN } from '../utils/helpers';
+import {
+  formatMoney,
+  optimizeImageUrl,
+  getAvailableStock,
+  PRODUCT_TYPES,
+  FREE_SHIPPING_MIN,
+} from '../utils/helpers';
 import ProductReviews from '../components/store/ProductReviews';
 
 function Accordion({ title, open, onToggle, children }) {
@@ -77,9 +83,9 @@ const careByType = {
 };
 
 const fitTipByType = {
-  shoe: 'True to size — size up for thicker socks or wider feet.',
+  shoe: 'مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني',
   belt: 'Measure your usual waist and match the chart.',
-  default: 'True to size for most customers.',
+  default: 'مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني',
 };
 
 function TrustRow({ itemPrice }) {
@@ -91,38 +97,28 @@ function TrustRow({ itemPrice }) {
     <ul className="mt-5 space-y-2.5 rounded-2xl border border-timber-100 bg-white/80 px-4 py-3.5 text-sm text-timber-600">
       <li className="flex items-start gap-2.5">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
-        <span>
-          <span className="font-semibold text-timber-800">Cash on delivery</span>
-          {' — '}pay when your order arrives. No account needed.
+        <span dir="rtl" lang="ar" className="text-right leading-relaxed">
+          معاينة المنتج وافحصه قبل ما تدفع للمندوب
         </span>
       </li>
       <li className="flex items-start gap-2.5">
         <Truck className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
-        <span>
-          Ships in 2–3 days · Cairo & Giza EGP 80 · other areas EGP 110
+        <span dir="rtl" lang="ar" className="text-right leading-relaxed">
+          الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام
           {needsMore ? (
-            <>
-              {' · '}
-              <span className="font-semibold text-timber-800">
-                add {formatMoney(remaining)} for free shipping
-              </span>
-            </>
-          ) : price >= FREE_SHIPPING_MIN ? (
-            <>
-              {' · '}
-              <span className="font-semibold text-timber-800">free shipping unlocked</span>
-            </>
+            <span className="block mt-1 text-xs text-timber-500" dir="ltr">
+              +{formatMoney(remaining)} for free shipping
+            </span>
           ) : null}
         </span>
       </li>
       <li className="flex items-start gap-2.5">
         <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
-        <span>
+        <span dir="rtl" lang="ar" className="text-right leading-relaxed">
+          مقاسك مضبوط 100%؟ لو طلع مش مقاسك، الاستبدال مجاني ·{' '}
           <Link to="/returns" className="font-semibold text-timber-800 underline-offset-2 hover:underline">
-            14-day returns
+            سياسة الإرجاع
           </Link>
-          {' · '}
-          free size exchange
         </span>
       </li>
     </ul>
@@ -140,13 +136,16 @@ export default function ProductPage() {
   const [qty, setQty] = useState(1);
   const [activePhoto, setActivePhoto] = useState(0);
   const [openSection, setOpenSection] = useState('details');
+  const [sizeError, setSizeError] = useState(false);
+  const sizeSectionRef = useRef(null);
+  const stickySizeRef = useRef(null);
 
   useEffect(() => {
     api.get(`/products/${id}`).then((r) => {
       setProduct(r.data);
       setColor(r.data.colors?.[0] || '');
-      const firstInStock = r.data.sizes?.find((s) => getAvailableStock(r.data, s) > 0);
-      setSize(firstInStock || r.data.sizes?.[0] || '');
+      setSize('');
+      setSizeError(false);
       setActivePhoto(0);
       setQty(1);
     });
@@ -176,18 +175,33 @@ export default function ProductPage() {
   const typeLabel =
     PRODUCT_TYPES.find((t) => t.value === product.type)?.label ||
     product.type.replace('_', ' ');
-  const availableStock = getAvailableStock(product, size);
-  const lowStock = availableStock > 0 && availableStock <= 5;
+  const needsSize = Boolean(product.sizes?.length);
+  const availableStock = getAvailableStock(product, size || null);
+  const lowStock = size && availableStock > 0 && availableStock <= 5;
   const sizeGuide = sizeGuideByType[product.type] || sizeGuideByType.default;
   const care = careByType[product.type] || careByType.default;
   const fitTip = fitTipByType[product.type] || fitTipByType.default;
   const liked = isSaved(product.id);
-  const canAdd = availableStock >= 1;
+  const hasStickySizes = needsSize;
+
+  const pickSize = (s) => {
+    setSize(s);
+    setSizeError(false);
+  };
+
+  const guardSize = () => {
+    if (!needsSize || size) return true;
+    setSizeError(true);
+    stickySizeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    sizeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast.error('من فضلك اختر المقاس أولاً');
+    return false;
+  };
 
   const add = (goCheckout = false) => {
+    if (needsSize && !guardSize()) return;
     if (availableStock < 1) return toast.error('Out of stock');
     if (product.colors?.length && !color) return toast.error('Select a color');
-    if (product.sizes?.length && !size) return toast.error('Select a size');
     addItem({ ...product, stock: availableStock }, qty, color || null, size || null);
     if (goCheckout) {
       navigate('/checkout');
@@ -209,8 +223,23 @@ export default function ProductPage() {
   const toggleSection = (key) =>
     setOpenSection((current) => (current === key ? '' : key));
 
+  const sizeChipClass = (s, outOfSize) => {
+    if (outOfSize) {
+      return 'cursor-not-allowed border-timber-100 bg-timber-50 text-timber-300 line-through';
+    }
+    if (size === s) return 'border-timber-800 bg-timber-800 text-white';
+    if (sizeError) return 'border-wheat bg-wheat-50 text-timber-800 size-guard-pulse';
+    return 'border-timber-200 bg-white text-timber-800 hover:border-timber-500';
+  };
+
   return (
-    <div className="bg-[#faf8f4] pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+    <div
+      className={`bg-[#faf8f4] lg:pb-0 ${
+        hasStickySizes
+          ? 'pb-[calc(9.75rem+env(safe-area-inset-bottom))]'
+          : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
+      }`}
+    >
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
         <nav className="mb-6 text-xs uppercase tracking-wider text-timber-400">
           <Link to="/shop" className="hover:text-timber-700">
@@ -227,6 +256,9 @@ export default function ProductPage() {
                 <img
                   src={optimizeImageUrl(photos[activePhoto], { width: 1200 })}
                   alt={product.name}
+                  width={1200}
+                  height={1200}
+                  fetchPriority="high"
                   decoding="async"
                   className="h-full w-full object-contain object-center"
                 />
@@ -294,8 +326,15 @@ export default function ProductPage() {
                 </span>
               )}
             </div>
-            <p className="mt-2 inline-flex items-center rounded-full bg-wheat-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-timber-800">
-              Cash on delivery available
+            <p
+              dir="rtl"
+              lang="ar"
+              className="mt-2 inline-flex items-center rounded-full bg-wheat-50 px-2.5 py-1 text-[11px] font-semibold text-timber-800"
+            >
+              معاينة المنتج وافحصه قبل ما تدفع للمندوب
+            </p>
+            <p dir="rtl" lang="ar" className="mt-2 text-sm text-timber-500">
+              الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام
             </p>
 
             {product.colors?.length > 0 && (
@@ -325,11 +364,11 @@ export default function ProductPage() {
               </div>
             )}
 
-            {product.sizes?.length > 0 && (
-              <div className="mt-7">
+            {needsSize && (
+              <div ref={sizeSectionRef} className="mt-7">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-timber-700">
-                    Size
+                    Size / المقاس
                   </span>
                   <button
                     type="button"
@@ -339,27 +378,36 @@ export default function ProductPage() {
                     Size chart
                   </button>
                 </div>
-                <p className="mb-3 text-sm text-timber-500">{fitTip}</p>
+                <p dir="rtl" lang="ar" className="mb-3 text-sm text-timber-500 text-right">
+                  {fitTip}
+                </p>
+                {sizeError && (
+                  <p
+                    dir="rtl"
+                    lang="ar"
+                    className="mb-2 text-sm font-semibold text-wheat-600"
+                    role="alert"
+                  >
+                    من فضلك اختر المقاس أولاً
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.map((s) => {
                     const sizeStock = getAvailableStock(product, s);
                     const outOfSize = sizeStock < 1;
                     return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => !outOfSize && setSize(s)}
-                      disabled={outOfSize}
-                      className={`min-w-[3rem] rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${
-                        outOfSize
-                          ? 'cursor-not-allowed border-timber-100 bg-timber-50 text-timber-300 line-through'
-                          : size === s
-                          ? 'border-timber-800 bg-timber-800 text-white'
-                          : 'border-timber-200 bg-white text-timber-800 hover:border-timber-500'
-                      }`}
-                    >
-                      {s}
-                    </button>
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => !outOfSize && pickSize(s)}
+                        disabled={outOfSize}
+                        className={`min-w-[3rem] rounded-lg border px-3 py-2.5 text-sm font-semibold transition ${sizeChipClass(
+                          s,
+                          outOfSize
+                        )}`}
+                      >
+                        {s}
+                      </button>
                     );
                   })}
                 </div>
@@ -384,10 +432,8 @@ export default function ProductPage() {
                 <button
                   type="button"
                   className="px-3 py-2.5 text-timber-700 hover:bg-timber-50"
-                  onClick={() =>
-                    setQty((q) => Math.min(availableStock || 1, q + 1))
-                  }
-                  disabled={qty >= availableStock}
+                  onClick={() => setQty((q) => Math.min(availableStock || 1, q + 1))}
+                  disabled={(needsSize && !size) || qty >= availableStock}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -399,13 +445,10 @@ export default function ProductPage() {
                 Low stock — only {availableStock} left
               </p>
             )}
-            {availableStock < 1 && (
+            {size && availableStock < 1 && (
               <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-red-600">
                 Out of stock
               </p>
-            )}
-            {availableStock > 5 && (
-              <p className="mt-4 text-sm text-timber-500">In stock</p>
             )}
 
             <div className="mt-6 hidden gap-3 lg:flex">
@@ -413,18 +456,18 @@ export default function ProductPage() {
                 type="button"
                 className="btn-outline flex-1 py-3.5 text-sm font-bold uppercase tracking-[0.14em]"
                 onClick={() => add(false)}
-                disabled={!canAdd}
               >
                 <ShoppingCart className="h-4 w-4" />
                 Add to cart
               </button>
               <button
                 type="button"
-                className="btn-wheat flex-1 py-3.5 text-sm font-bold uppercase tracking-[0.14em]"
+                className="btn-wheat flex-1 py-3.5 text-sm font-bold tracking-[0.04em]"
                 onClick={() => add(true)}
-                disabled={!canAdd}
+                dir="rtl"
+                lang="ar"
               >
-                Buy now
+                شراء الآن — الدفع عند الاستلام
               </button>
             </div>
 
@@ -486,11 +529,6 @@ export default function ProductPage() {
                     ))}
                   </ul>
                 )}
-                {product.sizes?.length > 0 && (
-                  <p className="mt-3 text-timber-500">
-                    Available sizes: {product.sizes.join(', ')}
-                  </p>
-                )}
               </Accordion>
 
               <Accordion
@@ -512,12 +550,12 @@ export default function ProductPage() {
                 open={openSection === 'delivery'}
                 onToggle={() => toggleSection('delivery')}
               >
-                <p className="uppercase tracking-wide text-[12px]">
-                  Orders take 2–3 business days
+                <p dir="rtl" lang="ar" className="text-sm leading-relaxed text-right">
+                  الشحن ٨٠ ج.م للقاهرة والجيزة · توصيل خلال ٢-٣ أيام · باقي المحافظات ١١٠ ج.م ·
+                  مجاني فوق {formatMoney(FREE_SHIPPING_MIN)}
                 </p>
-                <p className="mt-2 text-timber-500">
-                  Cash on delivery is the fastest way to order — pay when it arrives. Cairo & Giza
-                  shipping EGP 80 · other governorates EGP 110 · free over {formatMoney(FREE_SHIPPING_MIN)}.
+                <p dir="rtl" lang="ar" className="mt-2 text-sm text-timber-500 text-right">
+                  معاينة المنتج وافحصه قبل ما تدفع للمندوب
                 </p>
               </Accordion>
             </div>
@@ -527,33 +565,69 @@ export default function ProductPage() {
         <ProductReviews productId={product.id} />
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-timber-200 bg-cream/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:px-4 lg:hidden">
-        <div className="mx-auto flex max-w-7xl items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-timber-900">{product.name}</p>
-            <p className="text-sm tabular-nums text-timber-600">
-              {formatMoney(price)}
-              {size ? ` · Size ${size}` : product.sizes?.length ? ' · Pick a size' : ''}
-            </p>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-timber-200 bg-cream/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-md sm:px-4 lg:hidden">
+        <div className="mx-auto max-w-7xl space-y-2">
+          {needsSize && (
+            <div ref={stickySizeRef}>
+              {sizeError && (
+                <p
+                  dir="rtl"
+                  lang="ar"
+                  className="mb-1.5 text-center text-xs font-semibold text-wheat-600"
+                  role="alert"
+                >
+                  من فضلك اختر المقاس أولاً
+                </p>
+              )}
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {product.sizes.map((s) => {
+                  const sizeStock = getAvailableStock(product, s);
+                  const outOfSize = sizeStock < 1;
+                  return (
+                    <button
+                      key={`sticky-${s}`}
+                      type="button"
+                      onClick={() => !outOfSize && pickSize(s)}
+                      disabled={outOfSize}
+                      className={`min-h-10 min-w-[2.75rem] shrink-0 rounded-lg border px-2.5 text-sm font-semibold transition ${sizeChipClass(
+                        s,
+                        outOfSize
+                      )}`}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-timber-900">{product.name}</p>
+              <p className="text-sm tabular-nums text-timber-600">
+                {formatMoney(price)}
+                {size ? ` · ${size}` : needsSize ? ' · اختر المقاس' : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-outline shrink-0 px-2.5 py-3"
+              onClick={() => add(false)}
+              aria-label="Add to cart"
+            >
+              <ShoppingCart className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="btn-wheat min-h-12 max-w-[58%] shrink-0 px-3 py-2.5 text-[12px] font-bold leading-snug sm:max-w-none sm:px-4 sm:text-[13px]"
+              onClick={() => add(true)}
+              dir="rtl"
+              lang="ar"
+            >
+              <span className="sm:hidden">شراء الآن · COD</span>
+              <span className="hidden sm:inline">شراء الآن — الدفع عند الاستلام</span>
+            </button>
           </div>
-          <button
-            type="button"
-            className="btn-outline shrink-0 px-2.5 py-3 text-xs font-bold uppercase tracking-[0.12em] sm:px-3"
-            onClick={() => add(false)}
-            disabled={!canAdd}
-            aria-label="Add to cart"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            <span className="hidden sm:inline">Cart</span>
-          </button>
-          <button
-            type="button"
-            className="btn-wheat shrink-0 px-3 py-3 text-xs font-bold uppercase tracking-[0.12em] sm:px-4"
-            onClick={() => add(true)}
-            disabled={!canAdd}
-          >
-            Buy now
-          </button>
         </div>
       </div>
     </div>

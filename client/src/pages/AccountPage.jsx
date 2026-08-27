@@ -97,7 +97,7 @@ export default function AccountPage() {
           <AddressFields
             idPrefix="account"
             values={form}
-            onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))}
+            onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
           />
         </div>
         <div className="sm:col-span-2">

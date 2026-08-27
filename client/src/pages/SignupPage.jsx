@@ -25,7 +25,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const setAddress = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const setAddress = (patch) => setForm((current) => ({ ...current, ...patch }));
 
   const submit = async (e) => {
     e.preventDefault();

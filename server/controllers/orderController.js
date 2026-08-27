@@ -32,8 +32,8 @@ const requireShippingAddress = (shippingAddress) => {
     err.status = 400;
     throw err;
   }
-  if (!String(shippingAddress.street || '').trim() || !String(shippingAddress.city || '').trim()) {
-    const err = new Error('Street and city are required');
+  if (!String(shippingAddress.street || '').trim()) {
+    const err = new Error('Detailed address is required');
     err.status = 400;
     throw err;
   }
@@ -44,14 +44,18 @@ const requireShippingAddress = (shippingAddress) => {
   }
 };
 
-const sanitizeShippingAddress = (shippingAddress) => ({
-  street: String(shippingAddress.street || '').trim().slice(0, 200),
-  city: String(shippingAddress.city || '').trim().slice(0, 100),
-  state: String(shippingAddress.state || '').trim().slice(0, 100),
-  zip: String(shippingAddress.zip || '').trim().slice(0, 20),
-  country: String(shippingAddress.country || 'Egypt').trim().slice(0, 80) || 'Egypt',
-});
-
+const sanitizeShippingAddress = (shippingAddress) => {
+  const state = String(shippingAddress.state || '').trim().slice(0, 100);
+  const city =
+    String(shippingAddress.city || '').trim().slice(0, 100) || state || 'Egypt';
+  return {
+    street: String(shippingAddress.street || '').trim().slice(0, 400),
+    city,
+    state,
+    zip: String(shippingAddress.zip || '').trim().slice(0, 20),
+    country: String(shippingAddress.country || 'Egypt').trim().slice(0, 80) || 'Egypt',
+  };
+};
 const shippingFeeForGovernorate = (governorate) => {
   const value = String(governorate || '').trim().toLowerCase();
   if (value === 'cairo' || value === 'giza') return SHIPPING_FEE_CAIRO_GIZA;
@@ -477,8 +481,8 @@ const createGuestOrder = async (req, res) => {
         .status(400)
         .json({ message: 'Name and a valid Egyptian mobile number (01xxxxxxxxx) are required' });
     }
-    if (!email || !isValidEmail(email)) {
-      return res.status(400).json({ message: 'A valid email is required' });
+    if (email && !isValidEmail(email)) {
+      return res.status(400).json({ message: 'Enter a valid email or leave it blank' });
     }
 
     await runCheckoutBotChecks(req, { phone });
@@ -508,7 +512,7 @@ const createGuestOrder = async (req, res) => {
       userId: null,
       guestName: name,
       guestPhone: phone,
-      guestEmail: email,
+      guestEmail: email || null,
       paymentMethod: method,
       paymentReceiptUrl: receiptUrl,
       shippingAddress: address,

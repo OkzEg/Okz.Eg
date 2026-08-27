@@ -60,9 +60,9 @@ export default function StoreHeader() {
         }`}
       >
         <div className="bg-timber-800 px-3 py-2 text-center text-[10px] font-medium uppercase leading-snug tracking-[0.12em] text-cream sm:px-4 sm:text-[11px] sm:tracking-[0.18em]">
-          <span className="sm:hidden">COD · Ships 2–3 days · Inspect before you pay</span>
+          <span className="sm:hidden">Free shipping over EGP 3,000 · Ships 2–3 days</span>
           <span className="hidden sm:inline">
-            Inspect before you pay the courier · Cairo & Giza shipping EGP 80 · Delivers in 2–3 days
+            Inspect before you pay the courier · Free shipping for orders over EGP 3,000 · Delivers in 2–3 days
           </span>
         </div>
         <div className="relative mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-2 px-4 sm:h-[96px] sm:gap-4 sm:px-8">

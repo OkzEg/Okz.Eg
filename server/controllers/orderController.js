@@ -398,7 +398,7 @@ const createOrder = async (req, res) => {
     if (!name || !phone) {
       return res.status(400).json({ message: 'A valid Egyptian phone number and name are required' });
     }
-    if (emailRaw && !isValidEmail(emailRaw)) {
+    if (!emailRaw || !isValidEmail(emailRaw)) {
       return res.status(400).json({ message: 'A valid email is required' });
     }
 
@@ -428,7 +428,7 @@ const createOrder = async (req, res) => {
       userId: req.user.id,
       guestName: name,
       guestPhone: phone,
-      guestEmail: emailRaw || null,
+      guestEmail: emailRaw,
       paymentMethod: method,
       paymentReceiptUrl: receiptUrl,
       shippingAddress: address,
@@ -481,8 +481,8 @@ const createGuestOrder = async (req, res) => {
         .status(400)
         .json({ message: 'Name and a valid Egyptian mobile number (01xxxxxxxxx) are required' });
     }
-    if (email && !isValidEmail(email)) {
-      return res.status(400).json({ message: 'Enter a valid email or leave it blank' });
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({ message: 'A valid email is required' });
     }
 
     await runCheckoutBotChecks(req, { phone });
@@ -512,7 +512,7 @@ const createGuestOrder = async (req, res) => {
       userId: null,
       guestName: name,
       guestPhone: phone,
-      guestEmail: email || null,
+      guestEmail: email,
       paymentMethod: method,
       paymentReceiptUrl: receiptUrl,
       shippingAddress: address,

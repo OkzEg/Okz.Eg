@@ -152,8 +152,11 @@ export default function CheckoutPage() {
     if (!form.street.trim() || !form.state.trim()) {
       return toast.error('Governorate and detailed address are required');
     }
-    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      return toast.error('Enter a valid email or leave it blank');
+    if (!form.email.trim()) {
+      return toast.error('Email is required');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      return toast.error('Enter a valid email');
     }
     if (needsReceipt && !receiptFile) {
       return toast.error('Upload your transaction receipt screenshot before placing the order');
@@ -201,7 +204,7 @@ export default function CheckoutPage() {
           ...payload,
           contactName: form.name.trim(),
           contactPhone: form.phone.trim(),
-          contactEmail: form.email.trim() || undefined,
+          contactEmail: form.email.trim(),
         }));
         if (form.phone && form.phone !== user.phone) {
           try {
@@ -213,7 +216,7 @@ export default function CheckoutPage() {
           ...payload,
           guestName: form.name.trim(),
           guestPhone: form.phone.trim(),
-          guestEmail: form.email.trim() || undefined,
+          guestEmail: form.email.trim(),
         }));
       }
 
@@ -298,19 +301,10 @@ export default function CheckoutPage() {
                   autoComplete="tel"
                 />
               </div>
-            </div>
-            <AddressFields
-              idPrefix="checkout"
-              values={form}
-              onChange={setAddress}
-              compact
-            />
-            <details className="rounded-lg border border-timber-100 bg-cream/40 px-3 py-2">
-              <summary className="cursor-pointer text-sm text-timber-500">
-                Email (optional) — for order confirmation
-              </summary>
-              <div className="mt-3">
+              <div>
+                <label className="label">Email</label>
                 <input
+                  required
                   type="email"
                   className="input"
                   value={form.email}
@@ -320,7 +314,13 @@ export default function CheckoutPage() {
                   autoComplete="email"
                 />
               </div>
-            </details>
+            </div>
+            <AddressFields
+              idPrefix="checkout"
+              values={form}
+              onChange={setAddress}
+              compact
+            />
           </div>
 
           <div className="card space-y-4">

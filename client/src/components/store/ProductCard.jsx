@@ -22,9 +22,10 @@ export default function ProductCard({ product }) {
   const defaultSize = needsSize
     ? product.sizes.find((s) => getAvailableStock(product, s) > 0)
     : null;
-  const canAdd = needsSize
-    ? Boolean(defaultSize)
-    : (Number(product.stock) || 0) >= 1;
+  const totalStock = needsSize
+    ? product.sizes.reduce((sum, s) => sum + getAvailableStock(product, s), 0)
+    : Number(product.stock) || 0;
+  const canAdd = needsSize ? Boolean(defaultSize) : totalStock >= 1;
 
   const touchStartX = useRef(null);
   const swiped = useRef(false);
@@ -178,11 +179,11 @@ export default function ProductCard({ product }) {
           {typeLabel}
           {product.colors?.length ? ` · ${product.colors.slice(0, 2).join(' · ')}` : ''}
         </p>
-        {product.stock < 1 ? (
+        {totalStock < 1 ? (
           <p className="text-[11px] text-red-600 sm:text-[13px]">Out of stock</p>
-        ) : product.stock <= 5 ? (
+        ) : totalStock <= 5 ? (
           <p className="text-[11px] font-medium text-amber-700 sm:text-[13px]">
-            Only {product.stock} left
+            Only {totalStock} left
           </p>
         ) : (
           <p className="hidden text-[13px] text-timber-400 sm:block">In stock</p>

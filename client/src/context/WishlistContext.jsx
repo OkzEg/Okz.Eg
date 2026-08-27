@@ -2,6 +2,26 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const WishlistContext = createContext(null);
 
+const snapshotProduct = (product) => {
+  const price =
+    product.isSaleActive && product.salePrice != null ? product.salePrice : product.price;
+  return {
+    id: product.id,
+    name: product.name,
+    image: product.photos?.[0] || product.image || '',
+    price,
+    originalPrice: product.price,
+    isSaleActive: Boolean(product.isSaleActive),
+    salePrice: product.salePrice ?? null,
+    type: product.type,
+    colors: product.colors || [],
+    sizes: product.sizes || [],
+    sizeStock: product.sizeStock || {},
+    stock: Number(product.stock) || 0,
+    photos: product.photos?.length ? product.photos : product.image ? [product.image] : [],
+  };
+};
+
 export function WishlistProvider({ children }) {
   const [items, setItems] = useState(() => {
     try {
@@ -22,24 +42,7 @@ export function WishlistProvider({ children }) {
       if (prev.some((i) => i.id === product.id)) {
         return prev.filter((i) => i.id !== product.id);
       }
-      const price =
-        product.isSaleActive && product.salePrice != null ? product.salePrice : product.price;
-      return [
-        ...prev,
-        {
-          id: product.id,
-          name: product.name,
-          image: product.photos?.[0] || '',
-          price,
-          originalPrice: product.price,
-          isSaleActive: Boolean(product.isSaleActive),
-          salePrice: product.salePrice ?? null,
-          type: product.type,
-          colors: product.colors || [],
-          stock: product.stock,
-          photos: product.photos || [],
-        },
-      ];
+      return [...prev, snapshotProduct(product)];
     });
   };
 
@@ -49,8 +52,12 @@ export function WishlistProvider({ children }) {
 
   const clear = () => setItems([]);
 
+  const replaceAll = (nextItems) => {
+    setItems(Array.isArray(nextItems) ? nextItems.map(snapshotProduct) : []);
+  };
+
   const value = useMemo(
-    () => ({ items, count: items.length, isSaved, toggle, remove, clear }),
+    () => ({ items, count: items.length, isSaved, toggle, remove, clear, replaceAll }),
     [items]
   );
 

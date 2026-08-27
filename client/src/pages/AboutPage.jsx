@@ -107,7 +107,7 @@ export default function AboutPage() {
           {[
             ['Materials first', 'Leather and finishes selected for lasting daily wear.'],
             ['Egypt-ready delivery', 'COD, InstaPay, and Online Wallet — confirmed within 12 hours.'],
-            ['Easy returns', 'Unworn items can be returned within 14 days.'],
+            ['Easy returns', '14 days to return · one free size exchange per pair.'],
           ].map(([title, body]) => (
             <div key={title}>
               <h3 className="font-display text-2xl tracking-wide text-timber-900">{title}</h3>

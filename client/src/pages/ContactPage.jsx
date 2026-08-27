@@ -73,7 +73,7 @@ export default function ContactPage() {
           <div className="rounded-2xl border border-timber-100 bg-white/80 p-5">
             <h2 className="font-display text-2xl tracking-wide text-timber-900">Returns</h2>
             <p className="mt-2 text-sm text-timber-500">
-              Unworn items can be returned within 14 days.{' '}
+              14-day returns plus one free size exchange per item.{' '}
               <Link to="/returns" className="font-medium text-wheat-500 underline-offset-2 hover:underline">
                 Read the policy
               </Link>

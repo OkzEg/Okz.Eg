@@ -120,8 +120,9 @@ function TrustRow({ itemPrice }) {
         <span>
           <Link to="/returns" className="font-semibold text-timber-800 underline-offset-2 hover:underline">
             14-day returns
-          </Link>{' '}
-          on unworn items
+          </Link>
+          {' · '}
+          free size exchange
         </span>
       </li>
     </ul>

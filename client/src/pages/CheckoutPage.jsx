@@ -531,8 +531,9 @@ export default function CheckoutPage() {
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                 <Link to="/returns" className="underline-offset-2 hover:underline">
                   14-day returns
-                </Link>{' '}
-                on unworn items
+                </Link>
+                {' · '}
+                free size exchange
               </p>
             </div>
 

@@ -107,7 +107,7 @@ export default function HomePage() {
           {[
             ['Cash on delivery', 'Pay when your order arrives — no account needed'],
             ['Ships in 2–3 days', 'Cairo & Giza EGP 80 · free over EGP 3,000'],
-            ['14-day returns', 'Unworn items · easy WhatsApp support'],
+            ['14-day returns', 'Free size exchange · easy WhatsApp support'],
           ].map(([t, d]) => (
             <div key={t}>
               <h3 className="font-display text-2xl tracking-wide text-wheat">{t}</h3>

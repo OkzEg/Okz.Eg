@@ -248,13 +248,13 @@ export default function CartPage() {
             className="btn-wheat w-full py-3.5"
             onClick={() => navigate('/checkout')}
           >
-            Checkout
+            Checkout — pay on delivery available
           </button>
 
           <div className="space-y-2 text-xs text-timber-500">
             <p className="flex items-center gap-2">
               <Truck className="h-3.5 w-3.5 shrink-0" />
-              Ships in 2–3 business days · Cash on delivery
+              Ships in 2–3 business days · Guest checkout OK
             </p>
             <p className="flex items-center gap-2">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" />

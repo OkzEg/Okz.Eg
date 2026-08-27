@@ -72,17 +72,17 @@ export const PAYMENT_METHODS = [
   {
     value: 'Cash on Delivery',
     label: 'Cash on Delivery',
-    hint: 'Pay cash when your order arrives. Orders stay pending until we confirm them.',
+    hint: 'Recommended — pay cash when your order arrives. No transfer, no receipt.',
   },
   {
     value: 'InstaPay',
     label: 'InstaPay',
-    hint: 'Transfer via InstaPay, then upload your transaction receipt before placing the order.',
+    hint: 'Transfer via InstaPay, then upload your receipt before placing the order.',
   },
   {
     value: 'Online Wallet',
     label: 'Online Wallet',
-    hint: 'Transfer via Online Wallet, then upload your transaction receipt before placing the order.',
+    hint: 'Transfer via Online Wallet, then upload your receipt before placing the order.',
   },
 ];
 

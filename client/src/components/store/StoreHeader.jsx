@@ -60,9 +60,9 @@ export default function StoreHeader() {
         }`}
       >
         <div className="bg-timber-800 px-3 py-2 text-center text-[10px] font-medium uppercase leading-snug tracking-[0.12em] text-cream sm:px-4 sm:text-[11px] sm:tracking-[0.18em]">
-          <span className="sm:hidden">Free shipping over EGP 3,000 · COD</span>
+          <span className="sm:hidden">COD · Ships 2–3 days · Free over EGP 3,000</span>
           <span className="hidden sm:inline">
-            Free shipping over EGP 3,000 · COD · InstaPay · Online Wallet
+            Cash on delivery · Ships in 2–3 days · Free shipping over EGP 3,000 · Guest checkout
           </span>
         </div>
         <div className="relative mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-2 px-4 sm:h-[96px] sm:gap-4 sm:px-8">

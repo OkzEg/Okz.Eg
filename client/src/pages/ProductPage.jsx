@@ -82,23 +82,47 @@ const fitTipByType = {
   default: 'True to size for most customers.',
 };
 
-function TrustRow() {
+function TrustRow({ itemPrice }) {
+  const price = Number(itemPrice) || 0;
+  const needsMore = price > 0 && price < FREE_SHIPPING_MIN;
+  const remaining = Math.max(0, FREE_SHIPPING_MIN - price);
+
   return (
-    <ul className="mt-4 space-y-2 text-sm text-timber-500">
-      <li className="flex items-center gap-2">
-        <Truck className="h-4 w-4 shrink-0 text-timber-400" />
-        Ships in 2–3 business days · Cash on delivery
+    <ul className="mt-5 space-y-2.5 rounded-2xl border border-timber-100 bg-white/80 px-4 py-3.5 text-sm text-timber-600">
+      <li className="flex items-start gap-2.5">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
+        <span>
+          <span className="font-semibold text-timber-800">Cash on delivery</span>
+          {' — '}pay when your order arrives. No account needed.
+        </span>
       </li>
-      <li className="flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 shrink-0 text-timber-400" />
-        Free shipping on orders over {formatMoney(FREE_SHIPPING_MIN)}
+      <li className="flex items-start gap-2.5">
+        <Truck className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
+        <span>
+          Ships in 2–3 days · Cairo & Giza EGP 80 · other areas EGP 110
+          {needsMore ? (
+            <>
+              {' · '}
+              <span className="font-semibold text-timber-800">
+                add {formatMoney(remaining)} for free shipping
+              </span>
+            </>
+          ) : price >= FREE_SHIPPING_MIN ? (
+            <>
+              {' · '}
+              <span className="font-semibold text-timber-800">free shipping unlocked</span>
+            </>
+          ) : null}
+        </span>
       </li>
-      <li className="flex items-center gap-2">
-        <RefreshCw className="h-4 w-4 shrink-0 text-timber-400" />
-        <Link to="/returns" className="underline-offset-2 hover:underline">
-          14-day returns
-        </Link>{' '}
-        on unworn items
+      <li className="flex items-start gap-2.5">
+        <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-wheat" />
+        <span>
+          <Link to="/returns" className="font-semibold text-timber-800 underline-offset-2 hover:underline">
+            14-day returns
+          </Link>{' '}
+          on unworn items
+        </span>
       </li>
     </ul>
   );
@@ -259,7 +283,7 @@ export default function ProductPage() {
               {product.name}
             </h1>
 
-            <div className="mt-4 flex items-baseline gap-3">
+            <div className="mt-4 flex flex-wrap items-baseline gap-3">
               <span className="text-2xl font-semibold tabular-nums text-timber-900">
                 {formatMoney(price)}
               </span>
@@ -269,6 +293,9 @@ export default function ProductPage() {
                 </span>
               )}
             </div>
+            <p className="mt-2 inline-flex items-center rounded-full bg-wheat-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-timber-800">
+              Cash on delivery available
+            </p>
 
             {product.colors?.length > 0 && (
               <div className="mt-8">
@@ -400,7 +427,7 @@ export default function ProductPage() {
               </button>
             </div>
 
-            <TrustRow />
+            <TrustRow itemPrice={price} />
 
             <div className="mt-10 border-t border-timber-200">
               <Accordion
@@ -488,8 +515,8 @@ export default function ProductPage() {
                   Orders take 2–3 business days
                 </p>
                 <p className="mt-2 text-timber-500">
-                  Cash on delivery, InstaPay, and Online Wallet available at checkout. Free shipping on
-                  orders over EGP 3,000.
+                  Cash on delivery is the fastest way to order — pay when it arrives. Cairo & Giza
+                  shipping EGP 80 · other governorates EGP 110 · free over {formatMoney(FREE_SHIPPING_MIN)}.
                 </p>
               </Accordion>
             </div>
@@ -503,7 +530,10 @@ export default function ProductPage() {
         <div className="mx-auto flex max-w-7xl items-center gap-2">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-timber-900">{product.name}</p>
-            <p className="text-sm tabular-nums text-timber-600">{formatMoney(price)}</p>
+            <p className="text-sm tabular-nums text-timber-600">
+              {formatMoney(price)}
+              {size ? ` · Size ${size}` : product.sizes?.length ? ' · Pick a size' : ''}
+            </p>
           </div>
           <button
             type="button"

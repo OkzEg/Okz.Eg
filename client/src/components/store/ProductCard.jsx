@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -7,6 +7,7 @@ import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
 
 export default function ProductCard({ product }) {
+  const navigate = useNavigate();
   const [photoIndex, setPhotoIndex] = useState(0);
   const { isSaved, toggle } = useWishlist();
   const { addItem } = useCart();
@@ -17,10 +18,11 @@ export default function ProductCard({ product }) {
   const typeLabel =
     PRODUCT_TYPES.find((t) => t.value === product.type)?.label ||
     product.type.replace('_', ' ');
-  const defaultSize = product.sizes?.length
+  const needsSize = Boolean(product.sizes?.length);
+  const defaultSize = needsSize
     ? product.sizes.find((s) => getAvailableStock(product, s) > 0)
     : null;
-  const canAdd = product.sizes?.length
+  const canAdd = needsSize
     ? Boolean(defaultSize)
     : (Number(product.stock) || 0) >= 1;
 
@@ -62,13 +64,16 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
     if (!canAdd) return toast.error('Out of stock');
-    const size = defaultSize || null;
+    if (needsSize) {
+      navigate(`/product/${product.id}`);
+      return;
+    }
     const color = product.colors?.[0] || null;
-    const stock = getAvailableStock(product, size);
-    addItem({ ...product, stock }, 1, color, size);
+    const stock = getAvailableStock(product, null);
+    addItem({ ...product, stock }, 1, color, null);
     toast.success(
       <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span>{size ? `Added size ${size}` : 'Added to cart'}</span>
+        <span>Added to cart</span>
         <Link to="/cart" className="font-semibold underline underline-offset-2">
           View cart
         </Link>
@@ -199,7 +204,7 @@ export default function ProductCard({ product }) {
             disabled={!canAdd}
             onClick={addToCart}
             aria-label="Add to cart"
-            title={canAdd ? 'Add to cart' : 'Out of stock'}
+            title={canAdd ? (needsSize ? 'Choose size' : 'Add to cart') : 'Out of stock'}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-timber-200 bg-white text-timber-800 shadow-sm sm:h-10 sm:w-10 sm:transition sm:hover:scale-105 sm:hover:border-timber-400 sm:hover:bg-cream disabled:cursor-not-allowed disabled:border-timber-100 disabled:bg-timber-50 disabled:text-timber-300 disabled:hover:scale-100"
           >
             <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

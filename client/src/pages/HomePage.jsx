@@ -102,18 +102,23 @@ export default function HomePage() {
         </section>
       )}
 
-      <section className="bg-timber-700 text-white py-16">
+      <section className="bg-timber-700 text-white py-14 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 grid md:grid-cols-3 gap-8 text-center">
           {[
-            ['Premium leather', 'Materials selected for lasting wear'],
-            ['Trail to town', 'Styles that move with your day'],
-            ['Cash on delivery', 'Pay when your order arrives'],
+            ['Cash on delivery', 'Pay when your order arrives — no account needed'],
+            ['Ships in 2–3 days', 'Cairo & Giza EGP 80 · free over EGP 3,000'],
+            ['14-day returns', 'Unworn items · easy WhatsApp support'],
           ].map(([t, d]) => (
             <div key={t}>
               <h3 className="font-display text-2xl tracking-wide text-wheat">{t}</h3>
               <p className="mt-2 text-timber-300 text-sm">{d}</p>
             </div>
           ))}
+        </div>
+        <div className="mt-10 flex justify-center px-4">
+          <Link to="/shop" className="btn-wheat px-8 py-3.5 text-sm font-bold uppercase tracking-[0.14em]">
+            Shop the collection
+          </Link>
         </div>
       </section>
     </div>

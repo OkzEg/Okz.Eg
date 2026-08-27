@@ -256,6 +256,11 @@ export default function CheckoutPage() {
         </div>
 
         <div className="lg:col-span-3 space-y-4">
+          <div className="rounded-xl border border-wheat-200 bg-wheat-50/70 px-4 py-3 text-sm text-timber-700">
+            <span className="font-semibold text-timber-900">Guest checkout</span>
+            {' — '}no account needed. Cash on delivery is selected by default.
+          </div>
+
           <div className="card space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-timber-700">
               Contact
@@ -328,6 +333,11 @@ export default function CheckoutPage() {
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-timber-800">
                           {method.label}
+                          {method.value === 'Cash on Delivery' ? (
+                            <span className="ms-2 rounded-full bg-wheat-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-timber-800">
+                              Recommended
+                            </span>
+                          ) : null}
                         </span>
                         <span className="mt-0.5 block text-xs text-timber-500">{method.hint}</span>
                       </span>
@@ -440,11 +450,10 @@ export default function CheckoutPage() {
 
           {!user && (
             <p className="text-sm text-timber-500">
-              Checking out as guest.{' '}
+              Ordering as a guest. Already shopped with us?{' '}
               <Link to="/login?redirect=/checkout" className="text-wheat-500 underline-offset-2 hover:underline">
                 Sign in
-              </Link>{' '}
-              if you already have an account.
+              </Link>
             </p>
           )}
         </div>
@@ -514,7 +523,9 @@ export default function CheckoutPage() {
             <div className="space-y-2 text-xs text-timber-500">
               <p className="flex items-center gap-2">
                 <Truck className="h-3.5 w-3.5 shrink-0" />
-                Ships after we confirm your order · 2–3 business days
+                {form.paymentMethod === 'Cash on Delivery'
+                  ? 'Pay cash on delivery · ships in 2–3 business days'
+                  : 'We’ll confirm payment, then ship in 2–3 business days'}
               </p>
               <p className="flex items-center gap-2">
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
@@ -534,11 +545,20 @@ export default function CheckoutPage() {
                 (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)
               }
             >
-              {loading ? 'Placing…' : 'Place order'}
+              {loading
+                ? 'Placing…'
+                : form.paymentMethod === 'Cash on Delivery'
+                  ? 'Place COD order'
+                  : 'Place order'}
             </button>
             {needsReceipt && !receiptFile && (
               <p className="text-center text-xs text-timber-500">
                 Upload a payment receipt to enable Place order
+              </p>
+            )}
+            {!needsReceipt && (
+              <p className="text-center text-xs text-timber-500">
+                No payment now — you pay when the order arrives
               </p>
             )}
           </div>

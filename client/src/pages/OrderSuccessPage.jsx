@@ -1,5 +1,8 @@
 import { Link, useLocation, Navigate } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
 import { formatMoney, INSTAPAY_URL } from '../utils/helpers';
+
+const WHATSAPP = import.meta.env.VITE_WHATSAPP_NUMBER || '';
 
 function SuccessMark() {
   return (
@@ -56,6 +59,13 @@ export default function OrderSuccessPage() {
 
   const name = order.customerName || order.guestName;
   const isInstaPay = order.paymentMethod === 'InstaPay';
+  const isCod = order.paymentMethod === 'Cash on Delivery';
+  const orderRef = order.id.slice(0, 8).toUpperCase();
+  const whatsappHref = WHATSAPP
+    ? `https://wa.me/${String(WHATSAPP).replace(/\D/g, '')}?text=${encodeURIComponent(
+        `Hi OKZ — I just placed order ${orderRef}. Can you confirm it?`
+      )}`
+    : null;
 
   return (
     <div className="relative min-h-[70vh] overflow-hidden bg-[#faf8f4]">
@@ -74,26 +84,37 @@ export default function OrderSuccessPage() {
         <SuccessMark />
 
         <p className="success-fade mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-wheat">
-          You’re all set
+          Order received
         </p>
         <h1 className="success-fade success-fade--delay font-display mt-2 text-5xl tracking-wide text-timber-900 sm:text-6xl">
           Thank you{name ? `, ${name.split(' ')[0]}` : ''}
         </h1>
         <p className="success-fade success-fade--delay2 mx-auto mt-4 max-w-md text-base leading-relaxed text-timber-600 sm:text-lg">
-          Your order is in. We’ll contact you within{' '}
-          <span className="font-semibold text-timber-800">12 hours</span> to confirm it.
+          {isCod ? (
+            <>
+              You’re set — pay cash when it arrives. We’ll confirm your order within{' '}
+              <span className="font-semibold text-timber-800">12 hours</span>, then ship in 2–3
+              business days.
+            </>
+          ) : (
+            <>
+              Your order is in. We’ll confirm within{' '}
+              <span className="font-semibold text-timber-800">12 hours</span>, then ship in 2–3
+              business days.
+            </>
+          )}
         </p>
 
         <div className="success-fade success-fade--delay2 card mt-8 space-y-3 text-left text-sm">
           <div className="flex justify-between gap-4">
             <span className="text-timber-500">Order</span>
-            <span className="font-mono font-medium text-timber-800">
-              {order.id.slice(0, 8).toUpperCase()}
-            </span>
+            <span className="font-mono font-medium text-timber-800">{orderRef}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-timber-500">Payment</span>
-            <span className="text-timber-800">{order.paymentMethod}</span>
+            <span className="text-timber-800">
+              {isCod ? 'Cash on delivery' : order.paymentMethod}
+            </span>
           </div>
           <div className="flex justify-between gap-4 border-t border-timber-100 pt-3 text-base font-semibold text-timber-900">
             <span>Total</span>
@@ -114,9 +135,17 @@ export default function OrderSuccessPage() {
           </div>
         )}
 
-        <p className="mt-6 text-sm text-timber-500">
-          Delivery usually takes 2–3 business days.
-        </p>
+        {whatsappHref && (
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-6 inline-flex items-center justify-center gap-2 text-sm font-medium text-timber-700 underline-offset-2 hover:underline"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Message us on WhatsApp
+          </a>
+        )}
 
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link to="/shop" className="btn-wheat min-h-12 px-6 py-3">

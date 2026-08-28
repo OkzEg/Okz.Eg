@@ -16,7 +16,9 @@ const couponRoutes = require('./routes/couponRoutes');
 const problemRoutes = require('./routes/problemRoutes');
 const financeRoutes = require('./routes/financeRoutes');
 const alertRoutes = require('./routes/alertRoutes');
+const trafficRoutes = require('./routes/trafficRoutes');
 const { getMailStatus } = require('./utils/mail');
+const { requestLogger } = require('./middleware/requestLogger');
 const { reportServerError } = require('./controllers/alertController');
 const { globalLimiter } = require('./middleware/rateLimit');
 const { protect, adminOnly } = require('./middleware/authMiddleware');
@@ -60,6 +62,7 @@ app.use((req, res, next) => {
   express.json({ limit: slideWrite ? '8mb' : '1mb' })(req, res, next);
 });
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
+app.use(requestLogger);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -71,6 +74,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/api/traffic', trafficRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });

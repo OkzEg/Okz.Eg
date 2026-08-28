@@ -9,6 +9,7 @@ const ADMIN_PAGES = [
   'slides',
   'promotions',
   'finance',
+  'traffic',
 ];
 
 const OPS_PAGES = ['dashboard', 'deliveries', 'problems'];

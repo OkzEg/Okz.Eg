@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Truck, AlertTriangle, Users,
-  Images, Tag, Wallet, LogOut, Boxes, Store, LayoutGrid, Menu, X,
+  Images, Tag, Wallet, LogOut, Boxes, Store, LayoutGrid, Menu, X, Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../utils/permissions';
@@ -19,6 +19,7 @@ const NAV = [
   { path: '/staff/slides', label: 'Slideshow', icon: Images, page: 'slides' },
   { path: '/staff/promotions', label: 'Promotions', icon: Tag, page: 'promotions' },
   { path: '/staff/finance', label: 'Finance', icon: Wallet, page: 'finance' },
+  { path: '/staff/traffic', label: 'Traffic', icon: Activity, page: 'traffic' },
 ];
 
 function NavPanel({ user, onNavigate, logout, navigate }) {

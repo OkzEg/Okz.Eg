@@ -280,6 +280,143 @@ const trySendWithTransport = async (transport, mail) => {
   }
 };
 
+const alertEmailTo = () => cleanEnv('ERROR_ALERT_EMAIL', 'okzeg3@gmail.com');
+
+const buildSimpleMail = ({ to, subject, text, html }) => {
+  const senderEmail = smtpUser() || 'okzeg3@gmail.com';
+  const senderName = (cleanEnv('MAIL_FROM_NAME', 'OKZ') || 'OKZ').replace(/"/g, '');
+  const from = `"${senderName}" <${senderEmail}>`;
+  const replyTo = cleanEnv('MAIL_REPLY_TO', senderEmail) || senderEmail;
+  return {
+    from,
+    to,
+    replyTo,
+    envelope: { from: senderEmail, to },
+    subject: String(subject || 'OKZ alert').slice(0, 200),
+    text: String(text || '').slice(0, 8000),
+    html: html ? String(html).slice(0, 12000) : undefined,
+  };
+};
+
+const dispatchOutboundMail = async (mail, label) => {
+  const to = String(mail.to || '').trim();
+  if (!to || !EMAIL_RE.test(to)) {
+    return { skipped: true, reason: 'invalid_recipient' };
+  }
+
+  if (hasHttpRelay()) {
+    try {
+      const info = await sendViaHttp(mail);
+      lastSend = {
+        at: new Date().toISOString(),
+        to: maskEmail(to),
+        sent: true,
+        error: null,
+        via: info.via,
+      };
+      console.log(`[mail] ${label} sent to ${to} via ${info.via}`);
+      return { sent: true, messageId: info.messageId, via: info.via };
+    } catch (error) {
+      console.error(`[mail] HTTP relay failed (${label}):`, formatSmtpError(error));
+      lastSend = {
+        at: new Date().toISOString(),
+        to: maskEmail(to),
+        sent: false,
+        error: formatSmtpError(error),
+        via: 'http',
+      };
+      if (lastProbe.verified === false) {
+        return { sent: false, error: formatSmtpError(error) };
+      }
+    }
+  }
+
+  if (!isMailConfigured()) {
+    console.warn(`[mail] SMTP not configured — skipping ${label}`);
+    return { skipped: true, reason: 'not_configured' };
+  }
+
+  if (lastProbe.verified === false) {
+    const error =
+      'Railway cannot reach smtp.gmail.com. Set MAIL_WEBHOOK_URL or RESEND_API_KEY.';
+    console.error(`[mail] ${label} skipped: ${error}`);
+    return { sent: false, error };
+  }
+
+  const nm = loadNodemailer();
+  if (!nm) return { skipped: true, reason: 'nodemailer_missing' };
+
+  if (cachedTransport) {
+    try {
+      const info = await trySendWithTransport(cachedTransport, mail);
+      lastSend = {
+        at: new Date().toISOString(),
+        to: maskEmail(to),
+        sent: true,
+        error: null,
+        via: cachedAttemptLabel || 'cached',
+      };
+      console.log(`[mail] ${label} sent to ${to} via ${cachedAttemptLabel || 'cached'}`);
+      return { sent: true, messageId: info.messageId };
+    } catch (error) {
+      console.warn(`[mail] Cached SMTP failed (${label}): ${formatSmtpError(error)}`);
+      destroyTransporter();
+    }
+  }
+
+  const attempts = connectionAttempts();
+  let lastError = 'no attempts';
+  for (const attempt of attempts) {
+    const transport = createTransportForAttempt(nm, attempt);
+    try {
+      const info = await trySendWithTransport(transport, mail);
+      cachedTransport = transport;
+      cachedAttemptLabel = attempt.label;
+      lastProbe = {
+        checkedAt: new Date().toISOString(),
+        verified: true,
+        error: null,
+        via: attempt.label,
+      };
+      lastSend = {
+        at: new Date().toISOString(),
+        to: maskEmail(to),
+        sent: true,
+        error: null,
+        via: attempt.label,
+      };
+      console.log(`[mail] ${label} sent to ${to} via ${attempt.label}`);
+      return { sent: true, messageId: info.messageId, via: attempt.label };
+    } catch (error) {
+      lastError = formatSmtpError(error);
+      console.error(`[mail] SMTP ${attempt.label} failed (${label}): ${lastError}`);
+      destroyTransporter(transport);
+    }
+  }
+
+  lastSend = { at: new Date().toISOString(), to: maskEmail(to), sent: false, error: lastError, via: null };
+  return { sent: false, error: lastError };
+};
+
+const sendErrorAlertEmail = async ({ subject, text, html }) => {
+  try {
+    const to = alertEmailTo();
+    const mail = buildSimpleMail({ to, subject, text, html });
+    return dispatchOutboundMail(mail, 'error alert');
+  } catch (error) {
+    console.error('[mail] Failed to send error alert:', formatSmtpError(error));
+    return { sent: false, error: formatSmtpError(error) };
+  }
+};
+
+const queueErrorAlertEmail = (payload) => {
+  Promise.resolve()
+    .then(() => sendErrorAlertEmail(payload))
+    .catch((error) => {
+      console.error('[mail] Background error alert failed:', error?.message || error);
+    });
+};
+
 const sendOrderConfirmationEmail = async (order) => {
   try {
     const to = resolveRecipient(order);
@@ -290,122 +427,7 @@ const sendOrderConfirmationEmail = async (order) => {
     }
 
     const mail = buildMailPayload(order, to);
-
-    if (hasHttpRelay()) {
-      try {
-        const info = await sendViaHttp(mail);
-        lastSend = {
-          at: new Date().toISOString(),
-          to: maskEmail(to),
-          sent: true,
-          error: null,
-          via: info.via,
-        };
-        console.log(`[mail] Order confirmation sent to ${to} via ${info.via}`);
-        return { sent: true, messageId: info.messageId, via: info.via };
-      } catch (error) {
-        console.error('[mail] HTTP relay failed:', formatSmtpError(error));
-        lastSend = {
-          at: new Date().toISOString(),
-          to: maskEmail(to),
-          sent: false,
-          error: formatSmtpError(error),
-          via: 'http',
-        };
-        if (lastProbe.verified === false) {
-          return { sent: false, error: formatSmtpError(error) };
-        }
-      }
-    }
-
-    if (!isMailConfigured()) {
-      lastSend = {
-        at: new Date().toISOString(),
-        to: maskEmail(to),
-        sent: false,
-        error: 'not_configured',
-        via: null,
-      };
-      console.warn('[mail] SMTP not configured (set SMTP_USER and SMTP_PASS). Skipping order confirmation.');
-      return { skipped: true, reason: 'not_configured' };
-    }
-
-    if (lastProbe.verified === false) {
-      const error =
-        'Railway cannot reach smtp.gmail.com (ports 465/587 timed out). Set MAIL_WEBHOOK_URL (Google Apps Script) or RESEND_API_KEY.';
-      lastSend = { at: new Date().toISOString(), to: maskEmail(to), sent: false, error, via: null };
-      console.error(`[mail] ${error}`);
-      return { sent: false, error };
-    }
-
-    const nm = loadNodemailer();
-    if (!nm) {
-      lastSend = {
-        at: new Date().toISOString(),
-        to: maskEmail(to),
-        sent: false,
-        error: 'nodemailer_missing',
-        via: null,
-      };
-      return { skipped: true, reason: 'nodemailer_missing' };
-    }
-
-    if (cachedTransport) {
-      try {
-        const info = await trySendWithTransport(cachedTransport, mail);
-        lastSend = {
-          at: new Date().toISOString(),
-          to: maskEmail(to),
-          sent: true,
-          error: null,
-          via: cachedAttemptLabel || 'cached',
-        };
-        console.log(
-          `[mail] Order confirmation sent to ${to} via ${cachedAttemptLabel || 'cached'} (${info.messageId || 'ok'})`
-        );
-        return { sent: true, messageId: info.messageId };
-      } catch (error) {
-        console.warn(`[mail] Cached SMTP failed (${cachedAttemptLabel}): ${formatSmtpError(error)}`);
-        destroyTransporter();
-      }
-    }
-
-    const attempts = connectionAttempts();
-    let lastError = 'no attempts';
-    for (const attempt of attempts) {
-      const transport = createTransportForAttempt(nm, attempt);
-      try {
-        console.log(`[mail] Trying SMTP ${attempt.label} to ${smtpHost()}`);
-        const info = await trySendWithTransport(transport, mail);
-        cachedTransport = transport;
-        cachedAttemptLabel = attempt.label;
-        lastProbe = {
-          checkedAt: new Date().toISOString(),
-          verified: true,
-          error: null,
-          via: attempt.label,
-        };
-        lastSend = {
-          at: new Date().toISOString(),
-          to: maskEmail(to),
-          sent: true,
-          error: null,
-          via: attempt.label,
-        };
-        console.log(
-          `[mail] Order confirmation sent to ${to} via ${attempt.label} (${info.messageId || 'ok'})`
-        );
-        return { sent: true, messageId: info.messageId, via: attempt.label };
-      } catch (error) {
-        lastError = formatSmtpError(error);
-        console.error(`[mail] SMTP ${attempt.label} failed: ${lastError}`);
-        destroyTransporter(transport);
-      }
-    }
-
-    lastSend = { at: new Date().toISOString(), to: maskEmail(to), sent: false, error: lastError, via: null };
-    lastProbe = { checkedAt: new Date().toISOString(), verified: false, error: lastError, via: null };
-    return { sent: false, error: lastError };
+    return dispatchOutboundMail(mail, 'order confirmation');
   } catch (error) {
     destroyTransporter();
     const message = formatSmtpError(error);
@@ -515,6 +537,8 @@ module.exports = {
   isMailConfigured,
   sendOrderConfirmationEmail,
   queueOrderConfirmationEmail,
+  sendErrorAlertEmail,
+  queueErrorAlertEmail,
   getMailStatus,
   logMailStatus,
   startMailProbe,

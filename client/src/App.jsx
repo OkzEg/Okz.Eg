@@ -8,6 +8,7 @@ import { WishlistProvider } from './context/WishlistContext';
 import StoreHeader from './components/store/StoreHeader';
 import StoreFooter from './components/store/StoreFooter';
 import StaffLayout from './components/staff/StaffLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 import { defaultStaffPage, isStaff } from './utils/permissions';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
@@ -181,26 +182,28 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <ToastContainer
-              position="top-center"
-              theme="light"
-              limit={3}
-              newestOnTop
-              closeOnClick
-              hideProgressBar={false}
-              icon={false}
-              toastClassName="okz-toast"
-              bodyClassName="okz-toast-body"
-              progressClassName="okz-toast-progress"
-            />
-            <AppRoutes />
-          </WishlistProvider>
-        </CartProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <ToastContainer
+                position="top-center"
+                theme="light"
+                limit={3}
+                newestOnTop
+                closeOnClick
+                hideProgressBar={false}
+                icon={false}
+                toastClassName="okz-toast"
+                bodyClassName="okz-toast-body"
+                progressClassName="okz-toast-progress"
+              />
+              <AppRoutes />
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

@@ -15,7 +15,9 @@ const slideRoutes = require('./routes/slideRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const problemRoutes = require('./routes/problemRoutes');
 const financeRoutes = require('./routes/financeRoutes');
+const alertRoutes = require('./routes/alertRoutes');
 const { getMailStatus } = require('./utils/mail');
+const { reportServerError } = require('./controllers/alertController');
 const { globalLimiter } = require('./middleware/rateLimit');
 const { protect, adminOnly } = require('./middleware/authMiddleware');
 
@@ -68,6 +70,7 @@ app.use('/api/slides', slideRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/finance', financeRoutes);
+app.use('/api/alerts', alertRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
@@ -87,7 +90,12 @@ app.use((err, req, res, next) => {
     return res.status(403).json({ message: 'Origin not allowed' });
   }
   console.error(err);
-  res.status(500).json({ message: 'Something went wrong' });
+  if (!res.headersSent) {
+    reportServerError(err, req);
+    res.status(err.status && err.status >= 400 && err.status < 600 ? err.status : 500).json({
+      message: err.status && err.status < 500 ? err.message : 'Something went wrong',
+    });
+  }
 });
 
 module.exports = app;

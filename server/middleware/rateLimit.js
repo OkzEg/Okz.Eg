@@ -80,6 +80,13 @@ const reviewLimiter = rateLimit({
   message: { message: 'Too many reviews, please try again later' },
 });
 
+const alertLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: { message: 'Too many error reports' },
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
@@ -89,4 +96,5 @@ module.exports = {
   receiptUploadLimiter,
   couponLimiter,
   reviewLimiter,
+  alertLimiter,
 };

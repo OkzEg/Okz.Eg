@@ -116,6 +116,8 @@ model Coupon {
   code               String   @unique
   discountPercentage Int
   isActive           Boolean  @default(true)
+  usageCount         Int      @default(0)
+  maxUsage           Int?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

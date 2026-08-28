@@ -169,6 +169,11 @@ const resolveCoupon = async (couponCode, itemsPrice) => {
     err.status = 400;
     throw err;
   }
+  if (coupon.maxUsage != null && coupon.usageCount >= coupon.maxUsage) {
+    const err = new Error('Coupon usage limit reached');
+    err.status = 400;
+    throw err;
+  }
   const pct = Math.min(100, Math.max(0, Number(coupon.discountPercentage) || 0));
   discountAmount = (itemsPrice * pct) / 100;
   couponId = coupon.id;
@@ -263,6 +268,13 @@ const persistOrder = async ({
           throw Object.assign(new Error(`Insufficient stock for ${item.name}`), { status: 400 });
         }
       }
+    }
+
+    if (couponId) {
+      await tx.coupon.update({
+        where: { id: couponId },
+        data: { usageCount: { increment: 1 } },
+      });
     }
 
     return tx.order.create({
@@ -576,13 +588,34 @@ const getOrder = async (req, res) => {
 const listOrders = async (req, res) => {
   try {
     const { status } = req.query;
-    const orders = await prisma.order.findMany({
+    const page = parseInt(req.query.page, 10);
+    const limit = parseInt(req.query.limit, 10) || 50;
+
+    const query = {
       where: status ? { status: String(status) } : undefined,
       include: {
         items: true,
         user: { select: { id: true, name: true, email: true, phone: true } },
       },
       orderBy: { createdAt: 'desc' },
+    };
+
+    if (page && page > 0) {
+      const skip = (page - 1) * limit;
+      const [orders, total] = await Promise.all([
+        prisma.order.findMany({ ...query, skip, take: limit }),
+        prisma.order.count({ where: query.where }),
+      ]);
+      return res.json({
+        orders: orders.map((o) => serializeOrder(o, { includeCost: true })),
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+      });
+    }
+
+    const orders = await prisma.order.findMany({
+      ...query,
       take: 500,
     });
     res.json(orders.map((o) => serializeOrder(o, { includeCost: true })));

@@ -7,6 +7,7 @@ const {
   isValidEgyptianPhone,
   normalizeEgyptianPhone,
   isValidEmail,
+  MAX_PASSWORD_LENGTH,
 } = require('../utils/validation');
 
 const BCRYPT_ROUNDS = 12;
@@ -68,7 +69,10 @@ const login = async (req, res) => {
     });
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
 
-    const match = await bcrypt.compare(String(password || ''), user.passwordHash);
+    const match = await bcrypt.compare(
+      String(password || '').slice(0, MAX_PASSWORD_LENGTH),
+      user.passwordHash
+    );
     if (!match) return res.status(401).json({ message: 'Invalid email or password' });
 
     res.json(sanitizeUser(user));

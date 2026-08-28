@@ -1,4 +1,12 @@
+const MAX_ENTRIES = 500;
 const store = new Map();
+
+const evictOldest = () => {
+  if (store.size < MAX_ENTRIES) return;
+  // Map iterates in insertion order — first key is the oldest
+  const oldest = store.keys().next().value;
+  if (oldest !== undefined) store.delete(oldest);
+};
 
 const get = (key) => {
   const hit = store.get(key);
@@ -7,10 +15,16 @@ const get = (key) => {
     store.delete(key);
     return undefined;
   }
+  // Move to end (most-recently-used)
+  store.delete(key);
+  store.set(key, hit);
   return hit.value;
 };
 
 const set = (key, value, ttlMs = 30_000) => {
+  // Delete first so re-insertion moves it to the end
+  store.delete(key);
+  evictOldest();
   store.set(key, { value, exp: Date.now() + ttlMs });
   return value;
 };

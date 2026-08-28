@@ -3,7 +3,7 @@ const prisma = require('../lib/prisma');
 
 const STAFF_ROLES = new Set(['admin', 'ops']);
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       const secret = process.env.JWT_SECRET;
@@ -15,7 +15,14 @@ const protect = (req, res, next) => {
       if (!decoded?.id || !decoded?.role) {
         return res.status(401).json({ message: 'Not authorized, token invalid' });
       }
-      req.user = { id: decoded.id, role: decoded.role };
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, role: true },
+      });
+      if (!user) {
+        return res.status(401).json({ message: 'User no longer exists' });
+      }
+      req.user = { id: user.id, role: user.role };
       return next();
     } catch {
       return res.status(401).json({ message: 'Not authorized, token failed' });
@@ -24,7 +31,7 @@ const protect = (req, res, next) => {
   return res.status(401).json({ message: 'Not authorized, no token' });
 };
 
-const optionalProtect = (req, res, next) => {
+const optionalProtect = async (req, res, next) => {
   if (!req.headers.authorization?.startsWith('Bearer')) return next();
   try {
     const secret = process.env.JWT_SECRET;
@@ -32,7 +39,13 @@ const optionalProtect = (req, res, next) => {
     const token = req.headers.authorization.split(' ')[1];
     const decoded = jwt.verify(token, secret);
     if (decoded?.id && decoded?.role) {
-      req.user = { id: decoded.id, role: decoded.role };
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, role: true },
+      });
+      if (user) {
+        req.user = { id: user.id, role: user.role };
+      }
     }
   } catch {}
   return next();

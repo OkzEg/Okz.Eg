@@ -22,7 +22,7 @@ const listCoupons = async (req, res) => {
 
 const createCoupon = async (req, res) => {
   try {
-    const { code, discountPercentage, isActive } = req.body;
+    const { code, discountPercentage, isActive, maxUsage } = req.body;
     if (!code || discountPercentage == null) {
       return res.status(400).json({ message: 'Code and discountPercentage required' });
     }
@@ -31,6 +31,7 @@ const createCoupon = async (req, res) => {
         code: String(code).trim().toUpperCase().slice(0, 40),
         discountPercentage: clampDiscount(discountPercentage),
         isActive: isActive !== false,
+        maxUsage: maxUsage != null ? Math.max(1, Math.trunc(Number(maxUsage))) : null,
       },
     });
     res.status(201).json(coupon);
@@ -47,6 +48,9 @@ const updateCoupon = async (req, res) => {
       data.discountPercentage = clampDiscount(req.body.discountPercentage);
     }
     if (req.body.isActive != null) data.isActive = Boolean(req.body.isActive);
+    if (req.body.maxUsage !== undefined) {
+      data.maxUsage = req.body.maxUsage != null ? Math.max(1, Math.trunc(Number(req.body.maxUsage))) : null;
+    }
 
     const coupon = await prisma.coupon.update({
       where: { id: req.params.id },
@@ -78,6 +82,9 @@ const validateCoupon = async (req, res) => {
     const coupon = await prisma.coupon.findUnique({ where: { code } });
     if (!coupon || !coupon.isActive) {
       return res.status(404).json({ message: 'Invalid coupon' });
+    }
+    if (coupon.maxUsage != null && coupon.usageCount >= coupon.maxUsage) {
+      return res.status(400).json({ message: 'Coupon usage limit reached' });
     }
     res.json({
       code: coupon.code,

@@ -10,6 +10,7 @@ const DIGITAL_PAYMENT_METHODS = new Set(['InstaPay', 'Online Wallet', 'Vodafone 
 const MAX_ORDER_LINES = 15;
 const MAX_QTY_PER_LINE = 10;
 const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 72;
 
 const normalizePhone = (value) => String(value || '').replace(/\D/g, '');
 
@@ -44,6 +45,11 @@ const assertPaymentMethod = (paymentMethod) => {
 
 const assertPassword = (password) => {
   const value = String(password || '');
+  if (value.length > MAX_PASSWORD_LENGTH) {
+    const err = new Error('Password is too long');
+    err.status = 400;
+    throw err;
+  }
   if (value.length < MIN_PASSWORD_LENGTH) {
     const err = new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
     err.status = 400;
@@ -66,6 +72,7 @@ module.exports = {
   MAX_ORDER_LINES,
   MAX_QTY_PER_LINE,
   MIN_PASSWORD_LENGTH,
+  MAX_PASSWORD_LENGTH,
   normalizePhone,
   normalizeEgyptianPhone,
   isValidEgyptianPhone,

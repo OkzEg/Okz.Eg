@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { sendError } = require('../utils/safeError');
 const { assertPassword, isValidEmail } = require('../utils/validation');
+const { queueErrorAlertEmail } = require('../utils/mail');
 
 const listUsers = async (req, res) => {
   try {
@@ -57,6 +58,13 @@ const createStaffUser = async (req, res) => {
         createdAt: true,
       },
     });
+
+    console.log(`[AUDIT] Staff account created: ${user.email} (${user.role}) by ${req.user?.id || 'unknown'}`);
+    queueErrorAlertEmail({
+      subject: `[Audit] New Staff Account: ${user.role}`,
+      text: `A new ${user.role} account was created.\n\nEmail: ${user.email}\nName: ${user.name}\nCreator ID: ${req.user?.id || 'unknown'}\nCreated At: ${new Date().toISOString()}`,
+    });
+
     res.status(201).json(user);
   } catch (error) {
     return sendError(res, error, 'Could not create user');
@@ -77,7 +85,10 @@ const deleteUser = async (req, res) => {
 
 const listCustomers = async (req, res) => {
   try {
-    const customers = await prisma.user.findMany({
+    const page = parseInt(req.query.page, 10);
+    const limit = parseInt(req.query.limit, 10) || 50;
+
+    const query = {
       where: { role: 'customer' },
       select: {
         id: true,
@@ -88,6 +99,19 @@ const listCustomers = async (req, res) => {
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
+    };
+
+    if (page && page > 0) {
+      const skip = (page - 1) * limit;
+      const [customers, total] = await Promise.all([
+        prisma.user.findMany({ ...query, skip, take: limit }),
+        prisma.user.count({ where: query.where }),
+      ]);
+      return res.json({ customers, total, page, pages: Math.ceil(total / limit) });
+    }
+
+    const customers = await prisma.user.findMany({
+      ...query,
       take: 1000,
     });
     res.json(customers);

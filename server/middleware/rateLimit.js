@@ -87,6 +87,13 @@ const alertLimiter = rateLimit({
   message: { message: 'Too many error reports' },
 });
 
+const searchLimiter = rateLimit({
+  ...base,
+  windowMs: 60_000,
+  max: 60,
+  message: { message: 'Too many search requests, please try again later' },
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
@@ -97,4 +104,5 @@ module.exports = {
   couponLimiter,
   reviewLimiter,
   alertLimiter,
+  searchLimiter,
 };

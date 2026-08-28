@@ -22,7 +22,7 @@ export default function LoginPage() {
     try {
       const user = await login(email, password);
       toast.success('Welcome back');
-      if (isStaff(user)) navigate(defaultStaffPage(user.role));
+      if (isStaff(user)) navigate(redirect || defaultStaffPage(user.role));
       else navigate(redirect || '/');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed');

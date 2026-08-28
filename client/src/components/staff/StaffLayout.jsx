@@ -5,8 +5,16 @@ import { useAuth } from '../../context/AuthContext';
 import { canAccess, defaultStaffPage, isStaff } from '../../utils/permissions';
 
 export default function StaffLayout({ children, page }) {
-  const { user } = useAuth();
+  const { user, bootstrapping } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (bootstrapping) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-timber-50">
+        <div className="h-8 w-8 rounded-full border-2 border-wheat border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   if (!user) return <Navigate to="/login" replace />;
   if (!isStaff(user)) return <Navigate to="/" replace />;

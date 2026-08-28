@@ -133,7 +133,8 @@ function RequireCustomer({ children }) {
 }
 
 function StaffHome() {
-  const { user } = useAuth();
+  const { user, bootstrapping } = useAuth();
+  if (bootstrapping) return <PageLoader />;
   if (!user || !isStaff(user)) return <Navigate to="/login" replace />;
   return <Navigate to={defaultStaffPage(user.role)} replace />;
 }

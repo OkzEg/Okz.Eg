@@ -5,8 +5,7 @@ const generateToken = (id, role) => {
   if (!secret || String(secret).length < 16) {
     throw new Error('JWT_SECRET must be set to a strong value (16+ characters)');
   }
-  const expiresIn = role === 'admin' || role === 'ops' ? '12h' : '7d';
-  return jwt.sign({ id, role }, secret, { expiresIn });
+  return jwt.sign({ id, role }, secret, { expiresIn: '7d' });
 };
 
 module.exports = generateToken;

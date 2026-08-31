@@ -10,7 +10,7 @@ const {
 } = require('../controllers/productController');
 const { listReviews, createReview, deleteReview } = require('../controllers/reviewController');
 const { protect, adminOnly, optionalProtect } = require('../middleware/authMiddleware');
-const { reviewLimiter, searchLimiter } = require('../middleware/rateLimit');
+const { reviewLimiter, searchLimiter, adminLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -20,9 +20,9 @@ router.get('/:id/reviews', listReviews);
 router.post('/:id/reviews', optionalProtect, reviewLimiter, createReview);
 router.delete('/:id/reviews/:reviewId', protect, deleteReview);
 router.get('/:id', searchLimiter, getProduct);
-router.post('/', protect, adminOnly, createProduct);
-router.put('/:id', protect, adminOnly, updateProduct);
-router.patch('/:id/stock', protect, adminOnly, adjustStock);
-router.delete('/:id', protect, adminOnly, deleteProduct);
+router.post('/', protect, adminOnly, adminLimiter, createProduct);
+router.put('/:id', protect, adminOnly, adminLimiter, updateProduct);
+router.patch('/:id/stock', protect, adminOnly, adminLimiter, adjustStock);
+router.delete('/:id', protect, adminOnly, adminLimiter, deleteProduct);
 
 module.exports = router;

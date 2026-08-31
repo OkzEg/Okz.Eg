@@ -94,6 +94,13 @@ const searchLimiter = rateLimit({
   message: { message: 'Too many search requests, please try again later' },
 });
 
+const adminLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 admin requests per window
+  message: { message: 'Too many admin actions, please try again later' },
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
@@ -105,4 +112,5 @@ module.exports = {
   reviewLimiter,
   alertLimiter,
   searchLimiter,
+  adminLimiter,
 };

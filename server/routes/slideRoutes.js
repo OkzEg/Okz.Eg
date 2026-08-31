@@ -8,7 +8,7 @@ const {
   cloudinaryStatus,
 } = require('../controllers/slideController');
 const { protect, adminOnly, requireFreshStaff } = require('../middleware/authMiddleware');
-const { searchLimiter } = require('../middleware/rateLimit');
+const { searchLimiter, adminLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 const upload = multer({
@@ -35,8 +35,8 @@ const handleUpload = (req, res, next) => {
 
 router.get('/', searchLimiter, listSlides);
 router.get('/cloudinary-status', protect, requireFreshStaff, adminOnly, cloudinaryStatus);
-router.post('/', protect, requireFreshStaff, adminOnly, handleUpload, createSlide);
-router.put('/:id', protect, requireFreshStaff, adminOnly, handleUpload, updateSlide);
-router.delete('/:id', protect, requireFreshStaff, adminOnly, deleteSlide);
+router.post('/', protect, requireFreshStaff, adminOnly, adminLimiter, handleUpload, createSlide);
+router.put('/:id', protect, requireFreshStaff, adminOnly, adminLimiter, handleUpload, updateSlide);
+router.delete('/:id', protect, requireFreshStaff, adminOnly, adminLimiter, deleteSlide);
 
 module.exports = router;

@@ -11,12 +11,13 @@ const {
   opsOrAdmin,
   requireFreshStaff,
 } = require('../middleware/authMiddleware');
+const { adminLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
 router.get('/', protect, requireFreshStaff, adminOnly, listUsers);
-router.post('/', protect, requireFreshStaff, adminOnly, createStaffUser);
-router.delete('/:id', protect, requireFreshStaff, adminOnly, deleteUser);
+router.post('/', protect, requireFreshStaff, adminOnly, adminLimiter, createStaffUser);
+router.delete('/:id', protect, requireFreshStaff, adminOnly, adminLimiter, deleteUser);
 router.get('/customers', protect, requireFreshStaff, opsOrAdmin, listCustomers);
 
 module.exports = router;

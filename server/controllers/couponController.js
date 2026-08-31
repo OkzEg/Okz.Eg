@@ -13,7 +13,27 @@ const clampDiscount = (value) => {
 
 const listCoupons = async (req, res) => {
   try {
-    const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } });
+    const { page, limit } = req.query;
+    if (page) {
+      const p = Math.max(1, Number(page));
+      const l = Math.min(100, Number(limit) || 20);
+      const skip = (p - 1) * l;
+      const [coupons, total] = await Promise.all([
+        prisma.coupon.findMany({ skip, take: l, orderBy: { createdAt: 'desc' } }),
+        prisma.coupon.count(),
+      ]);
+      return res.json({
+        coupons,
+        total,
+        page: p,
+        pages: Math.ceil(total / l),
+      });
+    }
+
+    const coupons = await prisma.coupon.findMany({
+      take: Math.min(200, Number(limit) || 200),
+      orderBy: { createdAt: 'desc' },
+    });
     res.json(coupons);
   } catch (error) {
     return sendError(res, error);

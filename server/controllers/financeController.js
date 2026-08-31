@@ -22,8 +22,35 @@ const serializeEntry = (e) => ({
 const listEntries = async (req, res) => {
   try {
     const occurredAt = parseDateRange(req.query);
+    const { page, limit } = req.query;
+
+    if (page) {
+      const p = Math.max(1, Number(page));
+      const l = Math.min(100, Number(limit) || 20);
+      const skip = (p - 1) * l;
+
+      const [rows, total] = await Promise.all([
+        prisma.financeEntry.findMany({
+          where: occurredAt ? { occurredAt } : undefined,
+          skip,
+          take: l,
+          orderBy: { occurredAt: 'desc' },
+        }),
+        prisma.financeEntry.count({
+          where: occurredAt ? { occurredAt } : undefined,
+        }),
+      ]);
+      return res.json({
+        entries: rows.map(serializeEntry),
+        total,
+        page: p,
+        pages: Math.ceil(total / l),
+      });
+    }
+
     const entries = await prisma.financeEntry.findMany({
       where: occurredAt ? { occurredAt } : undefined,
+      take: Math.min(200, Number(limit) || 200),
       orderBy: { occurredAt: 'desc' },
     });
     res.json(entries.map(serializeEntry));

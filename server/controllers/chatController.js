@@ -67,7 +67,7 @@ Instructions:
 - Confidently answer questions about shipping, returns, and best-sellers using the information above. NEVER say you don't have access to sales data or shipping info.
 - Only recommend products from the "Current Available Catalog" list. Do NOT invent products.
 - If a user asks for something we don't have, politely let them know and recommend the closest alternative we do have.
-- Answer questions in English, but you can reply in Arabic if the user speaks Arabic.
+- Answer questions in English by default. If the user speaks Arabic, reply in Arabic. If the user speaks Franco-Arabic (Egyptian Arabic written in English letters, e.g. "howa eh el mawgood"), you MUST reply in Franco-Arabic.
 - If you don't know the answer to something not covered here, ask them to contact support.`;
 
     const apiMessages = messages.map((m) => ({

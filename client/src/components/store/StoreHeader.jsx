@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Menu, ShoppingBag, User, X, Heart } from 'lucide-react';
+import { Menu, ShoppingBag, User, X, Heart, Globe } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -45,6 +45,19 @@ export default function StoreHeader() {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  const toggleLanguage = () => {
+    const isArabic = document.cookie.includes('googtrans=/en/ar');
+    const nextLang = isArabic ? 'en' : 'ar';
+    const select = document.querySelector('.goog-te-combo');
+    if (select) {
+      select.value = nextLang;
+      select.dispatchEvent(new Event('change'));
+    } else {
+      document.cookie = `googtrans=/en/${nextLang}; path=/`;
+      window.location.reload();
+    }
+  };
 
   const linkCls = solid
     ? 'text-timber-600 hover:text-timber-800'
@@ -96,6 +109,17 @@ export default function StoreHeader() {
           </nav>
 
           <div className="relative z-10 flex items-center gap-1 sm:gap-3">
+            <button
+              onClick={toggleLanguage}
+              aria-label="Toggle language"
+              className={`relative grid h-10 w-10 place-items-center rounded-full transition sm:h-11 sm:w-11 ${
+                solid
+                  ? 'text-timber-700 hover:bg-timber-100'
+                  : 'text-white hover:bg-white/10'
+              }`}
+            >
+              <Globe className="h-5 w-5" strokeWidth={1.8} />
+            </button>
             <Link
               to="/wishlist"
               aria-label="Wishlist"

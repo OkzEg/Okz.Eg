@@ -169,3 +169,23 @@
   animation: okz-size-pulse 0.55s ease 2;
 }
 
+/* Hide Google Translate ugly UI elements */
+body {
+  top: 0 !important;
+}
+.skiptranslate iframe,
+.goog-te-banner-frame,
+#goog-gt-tt {
+  display: none !important;
+}
+.goog-tooltip {
+  display: none !important;
+}
+.goog-tooltip:hover {
+  display: none !important;
+}
+.goog-text-highlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}

@@ -43,15 +43,6 @@ export function CartProvider({ children }) {
         },
       ];
     });
-
-    // Fire and forget cart tracking
-    api.post('/traffic/cart-add', {
-      name: product.name,
-      size,
-      color,
-      qty,
-      price: product.isSaleActive && product.salePrice != null ? product.salePrice : product.price,
-    }).catch(() => {});
   };
 
   const updateQty = (productId, color, size, qty) => {

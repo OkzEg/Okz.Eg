@@ -13,12 +13,15 @@ export default function AccountPage() {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
+    password: '',
     street: user?.address?.street || '',
+    building: user?.address?.building || '',
+    apartment: user?.address?.apartment || '',
+    additionalInfo: user?.address?.additionalInfo || '',
     city: user?.address?.city || '',
     state: user?.address?.state || '',
     zip: user?.address?.zip || '',
-    country: user?.address?.country || '',
-    password: '',
+    country: user?.address?.country || 'Egypt',
   });
 
   useEffect(() => {
@@ -36,6 +39,9 @@ export default function AccountPage() {
         phone: form.phone,
         address: {
           street: form.street,
+          building: form.building,
+          apartment: form.apartment,
+          additionalInfo: form.additionalInfo,
           city: form.city,
           state: form.state,
           zip: form.zip,
@@ -82,6 +88,9 @@ export default function AccountPage() {
             className="input"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="01xxxxxxxxx"
+            pattern="^(?:\+?20)?0?1[0125]\d{8}$"
+            title="Egyptian mobile: 01xxxxxxxxx (e.g. 010, 011, 012, 015)"
           />
         </div>
         <div>

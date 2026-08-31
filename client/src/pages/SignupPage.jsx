@@ -18,6 +18,9 @@ export default function SignupPage() {
     password: '',
     phone: '',
     street: '',
+    building: '',
+    apartment: '',
+    additionalInfo: '',
     city: '',
     state: '',
     zip: '',
@@ -39,6 +42,9 @@ export default function SignupPage() {
         phone: form.phone,
         address: {
           street: form.street,
+          building: form.building,
+          apartment: form.apartment,
+          additionalInfo: form.additionalInfo,
           city: form.city,
           state: form.state,
           zip: form.zip,
@@ -165,6 +171,8 @@ export default function SignupPage() {
                 value={form.phone}
                 onChange={set('phone')}
                 placeholder="01xxxxxxxxx"
+                pattern="^(?:\+?20)?0?1[0125]\d{8}$"
+                title="Egyptian mobile: 01xxxxxxxxx (e.g. 010, 011, 012, 015)"
               />
             </div>
           </div>

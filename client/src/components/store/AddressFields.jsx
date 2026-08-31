@@ -17,10 +17,68 @@ export default function AddressFields({
     onChange(patch);
   };
 
+  const commonFields = (
+    <>
+      <div className="sm:col-span-2">
+        <label htmlFor={`${idPrefix}-street`} className="label">
+          Street Name
+        </label>
+        <input
+          id={`${idPrefix}-street`}
+          required
+          autoComplete="street-address"
+          className={inputClass}
+          value={values.street || ''}
+          onChange={field('street')}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-building`} className="label">
+          Building Number / Name
+        </label>
+        <input
+          id={`${idPrefix}-building`}
+          required
+          className={inputClass}
+          value={values.building || ''}
+          onChange={field('building')}
+        />
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-apartment`} className="label">
+          Apartment / Floor
+        </label>
+        <input
+          id={`${idPrefix}-apartment`}
+          required
+          className={inputClass}
+          value={values.apartment || ''}
+          onChange={field('apartment')}
+        />
+      </div>
+
+      <div className="sm:col-span-2">
+        <label htmlFor={`${idPrefix}-additional`} className="label">
+          Additional Information <span className="font-normal text-timber-400">(optional)</span>
+        </label>
+        <textarea
+          id={`${idPrefix}-additional`}
+          rows={2}
+          className={`${inputClass} resize-y`}
+          value={values.additionalInfo || ''}
+          onChange={field('additionalInfo')}
+          placeholder="Landmark, special instructions..."
+        />
+      </div>
+    </>
+  );
+
   if (compact) {
     return (
-      <div className="grid gap-4">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
           <label htmlFor={`${idPrefix}-state`} className="label">
             Governorate
           </label>
@@ -45,41 +103,14 @@ export default function AddressFields({
             ))}
           </select>
         </div>
-
-        <div>
-          <label htmlFor={`${idPrefix}-street`} className="label">
-            Detailed address
-          </label>
-          <textarea
-            id={`${idPrefix}-street`}
-            required
-            rows={3}
-            autoComplete="street-address"
-            className={`${inputClass} min-h-[5.5rem] resize-y`}
-            value={values.street || ''}
-            onChange={field('street')}
-            placeholder="Street, building, floor, landmark…"
-          />
-        </div>
+        {commonFields}
       </div>
     );
   }
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <label htmlFor={`${idPrefix}-street`} className="label">
-          Street address
-        </label>
-        <input
-          id={`${idPrefix}-street`}
-          required
-          autoComplete="street-address"
-          className={inputClass}
-          value={values.street || ''}
-          onChange={field('street')}
-        />
-      </div>
+      {commonFields}
 
       <div>
         <label htmlFor={`${idPrefix}-city`} className="label">

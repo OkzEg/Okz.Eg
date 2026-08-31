@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, MailCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
+import api from '../api/axios';
 import AuthLayout from '../components/AuthLayout';
 import AddressFields from '../components/store/AddressFields';
 
@@ -31,7 +32,7 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await (await import('../api/axios')).default.post('/auth/register', {
+      const { data } = await api.post('/auth/register', {
         name: form.name,
         email: form.email,
         password: form.password,

@@ -1,7 +1,7 @@
 const prisma = require('../lib/prisma');
 const { sendSimpleEmail } = require('../utils/mail');
 
-const DEDUP_CART_MS = 60 * 1000; // 1 minute cooldown per user/IP
+const DEDUP_CART_MS = 5 * 1000; // 5 seconds cooldown per user/IP
 const recentCartAlerts = new Map();
 
 const startOfTodayUtc = () => {

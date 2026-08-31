@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Eye, EyeOff, MailCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/AuthLayout';
 import AddressFields from '../components/store/AddressFields';
 
 export default function SignupPage() {
-  const { register } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const redirect = params.get('redirect') || '/';
+  const [pending, setPending] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -31,7 +32,7 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await register({
+      const { data } = await (await import('../api/axios')).default.post('/auth/register', {
         name: form.name,
         email: form.email,
         password: form.password,
@@ -44,14 +45,56 @@ export default function SignupPage() {
           country: form.country,
         },
       });
-      toast.success('Account created');
-      navigate(redirect);
+      if (data.pending) {
+        setPendingEmail(form.email);
+        setPending(true);
+      } else {
+        toast.success('Account created');
+        navigate(redirect);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Signup failed');
     } finally {
       setLoading(false);
     }
   };
+
+  // Show confirmation screen after registration
+  if (pending) {
+    return (
+      <AuthLayout
+        title="Check your email"
+        subtitle="One more step to activate your account."
+        footer={
+          <>
+            Wrong email?{' '}
+            <button
+              onClick={() => setPending(false)}
+              className="font-semibold text-wheat-500 underline-offset-2 hover:underline"
+            >
+              Go back
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col items-center gap-5 py-6 text-center">
+          <MailCheck className="h-14 w-14 text-wheat-500" />
+          <div>
+            <p className="text-lg font-semibold text-timber-900">Almost there!</p>
+            <p className="mt-2 text-sm text-timber-500">
+              We sent a verification link to{' '}
+              <span className="font-medium text-timber-800">{pendingEmail}</span>.
+              <br />
+              Please open the email and click the link to activate your account.
+            </p>
+          </div>
+          <p className="text-xs text-timber-400">
+            The link expires in 24 hours. Check your spam folder if you don't see it.
+          </p>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout

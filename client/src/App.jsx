@@ -17,6 +17,7 @@ import CartPage from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
@@ -112,7 +113,7 @@ function StoreShell({ children }) {
   const location = useLocation();
   const isStaffRoute = location.pathname.startsWith('/staff');
   const hideChrome =
-    ['/login', '/signup'].includes(location.pathname) || isStaffRoute;
+    ['/login', '/signup', '/verify-email'].includes(location.pathname) || isStaffRoute;
 
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
@@ -156,6 +157,7 @@ function AppRoutes() {
         <Route path="/order-success" element={<OrderSuccessPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/account" element={<RequireCustomer><AccountPage /></RequireCustomer>} />
         <Route path="/order/:id" element={<RequireCustomer><OrderPage /></RequireCustomer>} />
         <Route path="/privacy" element={<PrivacyPage />} />

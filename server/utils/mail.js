@@ -533,8 +533,14 @@ const startMailProbe = () => {
   });
 };
 
+const sendSimpleEmail = async ({ to, subject, text, html }) => {
+  const mail = buildSimpleMail({ to, subject, text, html });
+  return dispatchOutboundMail(mail, subject || 'email');
+};
+
 module.exports = {
   isMailConfigured,
+  sendSimpleEmail,
   sendOrderConfirmationEmail,
   queueOrderConfirmationEmail,
   sendErrorAlertEmail,

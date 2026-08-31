@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { defaultStaffPage, isStaff } from '../utils/permissions';
 import AuthLayout from '../components/AuthLayout';
+import api from '../api/axios';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -15,19 +16,41 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState(null);
+  const [resendSent, setResendSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setUnverifiedEmail(null);
     try {
       const user = await login(email, password);
       toast.success('Welcome back');
       if (isStaff(user)) navigate(redirect || defaultStaffPage(user.role));
       else navigate(redirect || '/');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      const data = err.response?.data;
+      if (data?.unverified) {
+        setUnverifiedEmail(data.email || email);
+      } else {
+        toast.error(data?.message || 'Login failed');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    try {
+      await api.post('/auth/resend-verification', { email: unverifiedEmail });
+      setResendSent(true);
+      toast.success('Verification email sent! Check your inbox.');
+    } catch {
+      toast.error('Could not resend email, please try again.');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -100,6 +123,27 @@ export default function LoginPage() {
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
+
+        {unverifiedEmail && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+            <p className="font-medium text-amber-800">Email not verified</p>
+            <p className="mt-1 text-amber-700">
+              Please verify your email before logging in.
+            </p>
+            {!resendSent ? (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendLoading}
+                className="mt-2 font-semibold text-wheat-600 underline-offset-2 hover:underline"
+              >
+                {resendLoading ? 'Sending…' : 'Resend verification email'}
+              </button>
+            ) : (
+              <p className="mt-2 font-medium text-green-700">✓ Verification email sent! Check your inbox.</p>
+            )}
+          </div>
+        )}
       </form>
     </AuthLayout>
   );

@@ -3,17 +3,27 @@ const { queueErrorAlertEmail } = require('../utils/mail');
 const DEDUP_MS = 15 * 60 * 1000;
 const recentAlerts = new Map();
 
-const IGNORED_PATTERNS = [
+const IGNORED_MESSAGE_PATTERNS = [
+  /^Script error\.?$/i,
   /ResizeObserver loop/i,
   /Loading chunk \d+ failed/i,
   /Failed to fetch dynamically imported module/i,
   /Network Error/i,
   /Request aborted/i,
   /cancelled/i,
+  /Java object is gone/i,
+  /Error invoking postMessage/i,
+  /navigation_performance_logger/i,
 ];
 
-const shouldIgnore = (message = '') =>
-  IGNORED_PATTERNS.some((pattern) => pattern.test(String(message)));
+const isNoiseUrl = (url = '') => /^iabjs:/i.test(String(url || ''));
+
+const shouldIgnore = (payload = {}) => {
+  const message = String(payload.message || '');
+  if (IGNORED_MESSAGE_PATTERNS.some((pattern) => pattern.test(message))) return true;
+  if (isNoiseUrl(payload.url) || isNoiseUrl(payload.stack)) return true;
+  return false;
+};
 
 const fingerprint = ({ type, message, url, status }) =>
   [type, String(message || '').slice(0, 160), url || '', status || ''].join('|');
@@ -72,7 +82,7 @@ const reportClientError = async (req, res) => {
       return res.status(400).json({ message: 'Message is required' });
     }
 
-    if (shouldIgnore(payload.message)) {
+    if (shouldIgnore(payload)) {
       return res.json({ ok: true, skipped: true });
     }
 
@@ -97,8 +107,6 @@ const reportClientError = async (req, res) => {
 const reportServerError = (err, req) => {
   try {
     const message = String(err?.message || 'Server error');
-    if (shouldIgnore(message)) return;
-
     const payload = {
       type: 'server',
       message,
@@ -106,6 +114,7 @@ const reportServerError = (err, req) => {
       url: `${req.method} ${req.originalUrl || req.path}`,
       status: err.status && err.status >= 500 ? err.status : 500,
     };
+    if (shouldIgnore(payload)) return;
 
     const key = fingerprint(payload);
     if (markAndCheckDuplicate(key)) return;

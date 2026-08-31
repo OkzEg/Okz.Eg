@@ -3,12 +3,31 @@ import api from '../api/axios';
 const seen = new Map();
 const DEDUP_MS = 15 * 60 * 1000;
 
-const shouldSkip = (message = '') => {
-  const m = String(message);
-  if (!m.trim()) return true;
-  if (/ResizeObserver loop/i.test(m)) return true;
-  if (/Loading chunk \d+ failed/i.test(m)) return true;
-  if (/Failed to fetch dynamically imported module/i.test(m)) return true;
+const NOISE_MESSAGE = [
+  /^Script error\.?$/i,
+  /ResizeObserver loop/i,
+  /Loading chunk \d+ failed/i,
+  /Failed to fetch dynamically imported module/i,
+  /Java object is gone/i,
+  /Error invoking postMessage/i,
+  /navigation_performance_logger/i,
+];
+
+const isNoiseUrl = (url = '') => {
+  const u = String(url);
+  if (!u) return false;
+  if (/^iabjs:/i.test(u)) return true;
+  if (/instagram\.com|facebook\.com|fbcdn\.net/i.test(u) && !/okz-eg\.store/i.test(u)) {
+    return true;
+  }
+  return false;
+};
+
+const shouldSkip = (payload = {}) => {
+  const message = String(payload.message || '');
+  if (!message.trim()) return true;
+  if (NOISE_MESSAGE.some((pattern) => pattern.test(message))) return true;
+  if (isNoiseUrl(payload.url) || isNoiseUrl(payload.stack)) return true;
   return false;
 };
 
@@ -16,7 +35,7 @@ const fingerprint = (payload) =>
   [payload.type, payload.message, payload.url, payload.apiUrl, payload.status].join('|');
 
 const sendReport = (payload) => {
-  if (shouldSkip(payload.message)) return;
+  if (shouldSkip(payload)) return;
   const key = fingerprint(payload);
   const now = Date.now();
   const last = seen.get(key);
@@ -56,11 +75,16 @@ export function installClientErrorReporting() {
   if (typeof window === 'undefined') return;
 
   window.addEventListener('error', (event) => {
+    const filename = event.filename || '';
+    const message = String(event.message || event.error?.message || 'Script error').slice(0, 2000);
+    // Opaque cross-origin failures (common in Instagram WebView) are useless noise.
+    if (/^Script error\.?$/i.test(message) && !event.error?.stack) return;
+
     sendReport({
       type: 'javascript',
-      message: String(event.message || event.error?.message || 'Script error').slice(0, 2000),
+      message,
       stack: event.error?.stack ? String(event.error.stack).slice(0, 4000) : '',
-      url: event.filename || window.location.href,
+      url: filename || window.location.href,
     });
   });
 

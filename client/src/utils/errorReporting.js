@@ -11,6 +11,7 @@ const NOISE_MESSAGE = [
   /Java object is gone/i,
   /Error invoking postMessage/i,
   /navigation_performance_logger/i,
+  /having trouble connecting right now/i,
 ];
 
 const isNoiseUrl = (url = '') => {
@@ -25,9 +26,12 @@ const isNoiseUrl = (url = '') => {
 
 const shouldSkip = (payload = {}) => {
   const message = String(payload.message || '');
+  const apiUrl = String(payload.apiUrl || '');
   if (!message.trim()) return true;
   if (NOISE_MESSAGE.some((pattern) => pattern.test(message))) return true;
   if (isNoiseUrl(payload.url) || isNoiseUrl(payload.stack)) return true;
+  // Chat failures are shown in-widget; don't email every Instagram visitor retry.
+  if (/\/chat\b/i.test(apiUrl)) return true;
   return false;
 };
 

@@ -67,8 +67,14 @@ export default function ChatWidget() {
     setIsLoading(true);
 
     try {
+      // Only send real conversation turns; local greeting must not lead the Gemini history.
+      const history = newMessages
+        .filter((m) => m.role === 'user' || (m.role === 'assistant' && !m.isError))
+        .slice(-12)
+        .map((m) => ({ role: m.role, content: m.content }));
+
       const { data } = await api.post('/chat', {
-        messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+        messages: history,
         wishlist,
       });
       setMessages([...newMessages, data]);

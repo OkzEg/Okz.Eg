@@ -1,9 +1,11 @@
 const express = require('express');
-const { getTodayTraffic } = require('../controllers/trafficController');
-const { protect, adminOnly } = require('../middleware/authMiddleware');
+const { getTodayTraffic, reportCartAdd } = require('../controllers/trafficController');
+const { protect, adminOnly, optionalProtect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 router.get('/today', protect, adminOnly, getTodayTraffic);
+
+router.post('/cart-add', optionalProtect, reportCartAdd);
 
 module.exports = router;

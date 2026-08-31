@@ -67,23 +67,36 @@ const registerCustomer = async (req, res) => {
     }
     assertPassword(password);
 
-    const exists = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const normalizedEmail = email.toLowerCase().trim().slice(0, 160);
+    const normalizedPhone = normalizeEgyptianPhone(phone);
+
+    const exists = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: normalizedEmail }, { phone: normalizedPhone }],
+      },
+    });
+
     if (exists) {
-      // If the account exists but is unverified, resend the email
-      if (!exists.isEmailVerified) {
-        const token = generateVerificationToken();
-        const expires = new Date(Date.now() + VERIFY_TOKEN_TTL_MS);
-        await prisma.user.update({
-          where: { id: exists.id },
-          data: { verificationToken: token, verificationTokenExpires: expires },
-        });
-        await sendVerificationEmail(exists, token);
-        return res.status(202).json({
-          pending: true,
-          message: 'We sent a new verification email. Please check your inbox.',
-        });
+      if (exists.email === normalizedEmail) {
+        // If the account exists but is unverified, resend the email
+        if (!exists.isEmailVerified) {
+          const token = generateVerificationToken();
+          const expires = new Date(Date.now() + VERIFY_TOKEN_TTL_MS);
+          await prisma.user.update({
+            where: { id: exists.id },
+            data: { verificationToken: token, verificationTokenExpires: expires },
+          });
+          await sendVerificationEmail(exists, token);
+          return res.status(202).json({
+            pending: true,
+            message: 'We sent a new verification email. Please check your inbox.',
+          });
+        }
+        return res.status(400).json({ message: 'User already exists with this email' });
       }
-      return res.status(400).json({ message: 'User already exists' });
+      if (exists.phone === normalizedPhone) {
+        return res.status(400).json({ message: 'This phone number is already registered' });
+      }
     }
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -93,9 +106,9 @@ const registerCustomer = async (req, res) => {
     const user = await prisma.user.create({
       data: {
         name: String(name).trim().slice(0, 120),
-        email: email.toLowerCase().trim().slice(0, 160),
+        email: normalizedEmail,
         passwordHash,
-        phone: normalizeEgyptianPhone(phone),
+        phone: normalizedPhone,
         address,
         role: 'customer',
         isEmailVerified: false,
@@ -229,56 +242,60 @@ const getMe = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    if (req.user.role !== 'customer') {
-      const { name, email, password } = req.body;
-      const data = {};
-      if (name) data.name = String(name).trim().slice(0, 120);
-      if (email) {
-        if (!isValidEmail(email)) {
-          return res.status(400).json({ message: 'A valid email is required' });
-        }
-        data.email = email.toLowerCase();
-      }
-      if (password) {
-        assertPassword(password);
-        data.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      }
-
-      const user = await prisma.user.update({
-        where: { id: req.user.id },
-        data,
-      });
-      return res.json(sanitizeUser(user));
-    }
-
+    const isCustomer = req.user.role === 'customer';
     const { name, email, password, phone, address } = req.body;
     const data = {};
+
     if (name) data.name = String(name).trim().slice(0, 120);
+
     if (email) {
       if (!isValidEmail(email)) {
         return res.status(400).json({ message: 'A valid email is required' });
       }
       data.email = email.toLowerCase();
     }
-    if (phone) {
+
+    if (isCustomer && phone) {
       if (!isValidEgyptianPhone(phone)) {
-        return res
-          .status(400)
-          .json({ message: 'Enter a valid Egyptian mobile number (01xxxxxxxxx)' });
+        return res.status(400).json({ message: 'Enter a valid Egyptian mobile number (01xxxxxxxxx)' });
       }
       data.phone = normalizeEgyptianPhone(phone);
     }
-    if (address) data.address = address;
+
+    if (isCustomer && address) data.address = address;
+
     if (password) {
       assertPassword(password);
       data.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    }
+
+    if (data.email || data.phone) {
+      const orConditions = [];
+      if (data.email) orConditions.push({ email: data.email });
+      if (data.phone) orConditions.push({ phone: data.phone });
+
+      const existing = await prisma.user.findFirst({
+        where: {
+          OR: orConditions,
+          NOT: { id: req.user.id },
+        },
+      });
+
+      if (existing) {
+        if (data.email && existing.email === data.email) {
+          return res.status(400).json({ message: 'This email is already registered' });
+        }
+        if (data.phone && existing.phone === data.phone) {
+          return res.status(400).json({ message: 'This phone number is already registered' });
+        }
+      }
     }
 
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data,
     });
-    res.json(sanitizeUser(user));
+    return res.json(sanitizeUser(user));
   } catch (error) {
     return sendError(res, error, 'Could not update profile');
   }

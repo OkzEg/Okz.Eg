@@ -37,9 +37,9 @@ export default class ErrorBoundary extends Component {
             >
               Refresh page
             </button>
-            <Link to="/shop" className="btn-outline">
+            <a href="/shop" className="btn-outline">
               Back to shop
-            </Link>
+            </a>
           </div>
         </div>
       );

@@ -22,6 +22,7 @@ import OrderSuccessPage from './pages/OrderSuccessPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import StaffDashboard from './pages/staff/Dashboard';
+import ChatWidget from './components/store/ChatWidget';
 
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const AccountPage = lazy(() => import('./pages/AccountPage'));
@@ -205,6 +206,7 @@ export default function App() {
                 progressClassName="okz-toast-progress"
               />
               <AppRoutes />
+              <ChatWidget />
             </WishlistProvider>
           </CartProvider>
         </AuthProvider>

@@ -17,6 +17,7 @@ const problemRoutes = require('./routes/problemRoutes');
 const financeRoutes = require('./routes/financeRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const trafficRoutes = require('./routes/trafficRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const { getMailStatus } = require('./utils/mail');
 const { requestLogger } = require('./middleware/requestLogger');
 const { reportServerError } = require('./controllers/alertController');
@@ -75,6 +76,7 @@ app.use('/api/problems', problemRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/traffic', trafficRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });

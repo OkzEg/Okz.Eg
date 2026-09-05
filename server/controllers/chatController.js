@@ -170,11 +170,42 @@ const generateWithFallback = async (ai, contents, systemPrompt) => {
   throw lastError || new Error('All chat models failed');
 };
 
+const formatActivityContext = (activity = []) => {
+  if (!Array.isArray(activity) || !activity.length) {
+    return 'No special recent shop activity.';
+  }
+  return activity
+    .slice(0, 5)
+    .map((a) => {
+      if (a.type === 'small_size_cart') {
+        return `- Added "${a.productName}" size ${a.size} to cart (small size — roast bait).`;
+      }
+      if (a.type === 'viewed_oos') {
+        return `- Opened out-of-stock product "${a.productName}" (roast bait).`;
+      }
+      return `- ${a.type}: ${a.productName || 'unknown'}`;
+    })
+    .join('\n');
+};
+
+const activityRoastBrief = (activityRoast = {}) => {
+  if (activityRoast.type === 'small_size_cart') {
+    return `TRIGGER: Customer just added "${activityRoast.productName}" in size ${activityRoast.size} (small size).
+Write ONE short roast about picking a tiny size, then still be helpful (confirm it's in cart / offer similar).`;
+  }
+  if (activityRoast.type === 'viewed_oos') {
+    return `TRIGGER: Customer just opened "${activityRoast.productName}" which is OUT OF STOCK.
+Write ONE short roast about browsing something that's clearly unavailable, then suggest checking in-stock alternatives.`;
+  }
+  return `TRIGGER: Minor shop activity. Write one short witty aside.`;
+};
+
 const handleChat = async (req, res) => {
   try {
-    const { messages, wishlist } = req.body;
+    const { messages, wishlist, activity, activityRoast } = req.body;
+    const isActivityRoast = Boolean(activityRoast && activityRoast.type);
 
-    if (!messages || !Array.isArray(messages)) {
+    if (!isActivityRoast && (!messages || !Array.isArray(messages))) {
       return res.status(400).json({ message: 'Messages array is required' });
     }
 
@@ -185,9 +216,23 @@ const handleChat = async (req, res) => {
       });
     }
 
-    const contents = toGeminiContents(messages);
-    if (!contents.length) {
-      return res.status(400).json({ message: 'Please send a message to start the chat.' });
+    let contents;
+    if (isActivityRoast) {
+      contents = [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `React to this shop activity now. ${activityRoastBrief(activityRoast)}`,
+            },
+          ],
+        },
+      ];
+    } else {
+      contents = toGeminiContents(messages);
+      if (!contents.length) {
+        return res.status(400).json({ message: 'Please send a message to start the chat.' });
+      }
     }
 
     const products = await prisma.product.findMany({
@@ -230,8 +275,14 @@ const handleChat = async (req, res) => {
       wishlistContext = `The user currently has these items in their wishlist: ${wishlistNames}.`;
     }
 
-    const replyLanguage = detectReplyLanguage(messages);
-    const allowSwear = shouldAllowSwear(messages);
+    const activityContext = formatActivityContext(activity);
+    const forcedLang = ['egyptian_arabic', 'franco', 'english'].includes(activityRoast?.language)
+      ? activityRoast.language
+      : null;
+    const replyLanguage = forcedLang || detectReplyLanguage(messages || []);
+    const allowSwear = isActivityRoast
+      ? Math.random() < 1 / 6
+      : shouldAllowSwear(messages || []);
 
     const systemPrompt = `You are the OKZ Assistant — the store's sarcastic shopping gremlin.
 You ARE helpful, but you're also a witty asshole. Roast first, help second. Never actually refuse to help.
@@ -255,15 +306,24 @@ PERSONALITY:
 - Swearing is RARE. Obey SWEAR SLOT above every turn. Default is NO swear words.
 - When swearing is allowed, use at most ONE word from the allowed list only.
 - BAN everything outside the allowed list: no fuck, bitch, ass (as slur), dick, pussy, كس، شرموطة، ابن الـ…, متناك, etc.
-- Never insult the customer's money, body, family, religion, or worth as a person. Mock the QUESTION or the obviousness — not who they are.
+- Never insult the customer's money, body, family, religion, or worth as a person. Mock the QUESTION / choice / obviousness — keep small-size jokes light and playful, not cruel.
 - Still push sales: recommend real products, guide to checkout, mention free shipping over 3,000 EGP when relevant.
+
+ACTIVITY AWARENESS (only these — do NOT invent other stalking):
+${activityContext}
+- If recent activity includes a small-size cart add, you may tease them about tiny size energy when relevant.
+- If they opened an out-of-stock product, roast that they browsed something unavailable, then steer to in-stock options.
+- Do not mention activity on every reply — only when it fits.
+
+${isActivityRoast ? `ACTIVITY ROAST MODE: Reply with ONE short message only (1–2 sentences). No preamble. ${activityRoastBrief(activityRoast)}` : ''}
 
 STYLE EXAMPLES (tone + language — invent fresh lines):
 - AR (no swear): "في من الشوز الاسود ده؟" + out of stock → "مكتوب out of stock على الصفحة… لو عايز بديل، عندنا [product] موجود."
 - AR (swear allowed): "مكتوب out of stock يا جلنف 😏 … لو عايز بديل، عندنا [product] موجود."
+- AR small size: "Size 39 في الكارت؟ تمام يا نجم الأقدام الصغيرة 😏 الطلب ماشي."
 - FRANCO (no swear): "maktoub out of stock 3ala el page… bas law 3ayez badil, 3andena [product] mawgood."
 - EN (swear allowed): "It literally says out of stock, dumbass 😏 … closest thing we still have is [product]."
-- Always end the roast with a concrete next step.
+- Always end with a concrete next step when helping.
 
 About OKZ:
 - Premium leather boots, belts, wallets, and accessories in Egypt.
@@ -282,16 +342,16 @@ Hard rules:
 - If Stock status is OUT OF STOCK, say it's out of stock with a roast, then suggest an IN STOCK alternative.
 - If a specific size shows 0 in Size stock, say that size is gone and suggest available sizes.
 - Answer shipping / returns / payment confidently from the facts above.
-- Keep answers short (2–5 sentences max unless listing options).
+- Keep answers short (2–5 sentences max unless listing options). Activity roasts: 1–2 sentences max.
 - Never break character into a corporate polite bot.
 - Obey REPLY LANGUAGE LOCK and SWEAR SLOT above with zero exceptions.`;
 
-    // Slightly higher temperature = sharper comic timing without going unhinged.
     const { text } = await generateWithFallback(ai, contents, systemPrompt);
 
     return res.json({
       role: 'assistant',
       content: text,
+      detectedLanguage: replyLanguage,
     });
   } catch (error) {
     console.error('[chatController] Error:', error?.message || error);

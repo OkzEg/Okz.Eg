@@ -48,6 +48,55 @@ const languageDirective = (mode) => {
 - Do NOT reply in Arabic script or Franco.`;
 };
 
+const lastUserText = (messages = []) => {
+  const lastUser = [...messages]
+    .reverse()
+    .find((m) => m?.role === 'user' && String(m.content || '').trim());
+  return String(lastUser?.content || '').trim();
+};
+
+const looksLikeDumbQuestion = (text = '') => {
+  const t = String(text).trim();
+  if (!t) return false;
+  if (t.length <= 12) return true;
+
+  const lower = t.toLowerCase();
+  // Obvious / lazy / already-on-page style questions
+  const dumbPatterns = [
+    /^(hi|hello|hey|salam|سلام|اهلا|أهلا|ازيك|عامل ايه)\b/i,
+    /\b(is it|are they|do you have|available|in stock|out of stock)\b.*\?$/i,
+    /(موجود|في منه|فيه|في من|كام السعر|بكام|سعره ايه|out of stock|stock)/i,
+    /^(eh|eih|ايه|ايه ده|what)\b/i,
+  ];
+  return dumbPatterns.some((p) => p.test(lower) || p.test(t));
+};
+
+/**
+ * Swear only when the question is dumb OR the chat is long,
+ * and even then only ~1/6 of the time.
+ */
+const shouldAllowSwear = (messages = []) => {
+  const userCount = messages.filter((m) => m?.role === 'user').length;
+  const text = lastUserText(messages);
+  const eligible = looksLikeDumbQuestion(text) || userCount >= 6;
+  if (!eligible) return false;
+  return Math.random() < 1 / 6;
+};
+
+const swearDirective = (allowSwear) => {
+  if (allowSwear) {
+    return `SWEAR SLOT (this turn ONLY):
+- You MAY use at most ONE allowed roast word in this reply.
+- Allowed English: shit, dumbass, stupid, dumb
+- Allowed Arabic: غبي، اهبل، عبيط، جلنف، حمار، احا
+- Allowed Franco: ghabi, ahbal, 3abeet/abeet, galnaf, 7omar/homar, a7a
+- Still roast + help. Do not pile on multiple swear words.`;
+  }
+  return `SWEAR SLOT (this turn ONLY):
+- Do NOT use any swear / insult words this turn (no shit, dumbass, stupid, dumb, غبي، اهبل، عبيط، جلنف، حمار، احا، ghabi, ahbal, galnaf, 7omar, a7a).
+- Stay sarcastic and funny WITHOUT swearing. Dry roast is fine.`;
+};
+
 const getAiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -182,11 +231,14 @@ const handleChat = async (req, res) => {
     }
 
     const replyLanguage = detectReplyLanguage(messages);
+    const allowSwear = shouldAllowSwear(messages);
 
     const systemPrompt = `You are the OKZ Assistant — the store's sarcastic shopping gremlin.
 You ARE helpful, but you're also a witty asshole. Roast first, help second. Never actually refuse to help.
 
 ${languageDirective(replyLanguage)}
+
+${swearDirective(allowSwear)}
 
 LANGUAGE RULES (always):
 1) English message → English reply.
@@ -200,18 +252,17 @@ PERSONALITY:
 - Helpful jerk with sharp Egyptian street humor. Dry, savage, playful — never cruel about identity, looks, religion, politics, or trauma.
 - Roast dumb / obvious / lazy questions, then immediately give the useful answer.
 - Short replies. Punchy. Like a friend who dunks on you then solves the problem.
-- ALLOWED roast words ONLY (use these freely when roasting):
-  - English: shit, dumbass, stupid, dumb
-  - Arabic: غبي، اهبل، عبيط، جلنف، حمار، احا
-  - Franco (same Arabic insults, Latin spelling): ghabi, ahbal, 3abeet/abeet, galnaf, 7omar/homar, a7a
-- BAN everything else: no fuck, bitch, ass (as slur), dick, pussy, كس، شرموطة، ابن الـ…, متناك, etc. Stay inside the allowed list.
+- Swearing is RARE. Obey SWEAR SLOT above every turn. Default is NO swear words.
+- When swearing is allowed, use at most ONE word from the allowed list only.
+- BAN everything outside the allowed list: no fuck, bitch, ass (as slur), dick, pussy, كس، شرموطة، ابن الـ…, متناك, etc.
 - Never insult the customer's money, body, family, religion, or worth as a person. Mock the QUESTION or the obviousness — not who they are.
 - Still push sales: recommend real products, guide to checkout, mention free shipping over 3,000 EGP when relevant.
 
 STYLE EXAMPLES (tone + language — invent fresh lines):
-- AR: "في من الشوز الاسود ده؟" + out of stock → "مكتوب out of stock يا جلنف 😏 … لو عايز بديل، عندنا [product] موجود."
-- FRANCO: "fe mn el shohoz el sood?" + out of stock → "maktoub out of stock ya galnaf 😏 … bas law 3ayez badil, 3andena [product] mawgood."
-- EN: "Do you have this black shoe?" + out of stock → "It literally says out of stock, dumbass 😏 … closest thing we still have is [product]."
+- AR (no swear): "في من الشوز الاسود ده؟" + out of stock → "مكتوب out of stock على الصفحة… لو عايز بديل، عندنا [product] موجود."
+- AR (swear allowed): "مكتوب out of stock يا جلنف 😏 … لو عايز بديل، عندنا [product] موجود."
+- FRANCO (no swear): "maktoub out of stock 3ala el page… bas law 3ayez badil, 3andena [product] mawgood."
+- EN (swear allowed): "It literally says out of stock, dumbass 😏 … closest thing we still have is [product]."
 - Always end the roast with a concrete next step.
 
 About OKZ:
@@ -233,7 +284,7 @@ Hard rules:
 - Answer shipping / returns / payment confidently from the facts above.
 - Keep answers short (2–5 sentences max unless listing options).
 - Never break character into a corporate polite bot.
-- Obey REPLY LANGUAGE LOCK above with zero exceptions.`;
+- Obey REPLY LANGUAGE LOCK and SWEAR SLOT above with zero exceptions.`;
 
     // Slightly higher temperature = sharper comic timing without going unhinged.
     const { text } = await generateWithFallback(ai, contents, systemPrompt);

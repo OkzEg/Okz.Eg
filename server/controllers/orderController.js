@@ -774,6 +774,116 @@ const financeSummary = async (req, res) => {
   }
 };
 
+const analyticsData = async (req, res) => {
+  try {
+    const now = new Date();
+    const monthsBack = parseInt(req.query.months, 10) || 12;
+
+    // ── Monthly revenue for the last N months ──
+    const monthlyRevenue = [];
+    for (let i = monthsBack - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+      const agg = await prisma.order.aggregate({
+        where: {
+          status: { not: 'canceled' },
+          createdAt: { gte: start, lte: end },
+        },
+        _sum: { totalPrice: true },
+        _count: { _all: true },
+      });
+      monthlyRevenue.push({
+        month: start.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        revenue: Number(agg._sum.totalPrice || 0),
+        orders: agg._count._all || 0,
+      });
+    }
+
+    // ── Most popular sizes ──
+    const allItems = await prisma.orderItem.findMany({
+      where: { order: { status: { not: 'canceled' } } },
+      select: { size: true, qty: true },
+    });
+    const sizeMap = {};
+    for (const item of allItems) {
+      const s = item.size || 'N/A';
+      sizeMap[s] = (sizeMap[s] || 0) + item.qty;
+    }
+    const popularSizes = Object.entries(sizeMap)
+      .map(([size, qty]) => ({ size, qty }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 10);
+
+    // ── Top selling products ──
+    const productMap = {};
+    const productItems = await prisma.orderItem.findMany({
+      where: { order: { status: { not: 'canceled' } } },
+      select: { productId: true, name: true, qty: true, price: true },
+    });
+    for (const item of productItems) {
+      if (!productMap[item.productId]) {
+        productMap[item.productId] = { name: item.name, qty: 0, revenue: 0 };
+      }
+      productMap[item.productId].qty += item.qty;
+      productMap[item.productId].revenue += Number(item.price) * item.qty;
+    }
+    const topProducts = Object.entries(productMap)
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 8);
+
+    // ── Order status breakdown ──
+    const statusGroups = await prisma.order.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    });
+    const statusBreakdown = statusGroups.map((g) => ({
+      status: g.status,
+      count: g._count._all,
+    }));
+
+    // ── Customer growth (new sign-ups per month) ──
+    const customerGrowth = [];
+    for (let i = monthsBack - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+      const count = await prisma.user.count({
+        where: { role: 'customer', createdAt: { gte: start, lte: end } },
+      });
+      customerGrowth.push({
+        month: start.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        customers: count,
+      });
+    }
+
+    // ── Revenue by payment method ──
+    const paymentOrders = await prisma.order.findMany({
+      where: { status: { not: 'canceled' } },
+      select: { paymentMethod: true, totalPrice: true },
+    });
+    const paymentMap = {};
+    for (const o of paymentOrders) {
+      const method = o.paymentMethod || 'Unknown';
+      paymentMap[method] = (paymentMap[method] || 0) + Number(o.totalPrice);
+    }
+    const revenueByPayment = Object.entries(paymentMap).map(([method, revenue]) => ({
+      method,
+      revenue,
+    }));
+
+    res.json({
+      monthlyRevenue,
+      popularSizes,
+      topProducts,
+      statusBreakdown,
+      customerGrowth,
+      revenueByPayment,
+    });
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
 module.exports = {
   createOrder,
   createGuestOrder,
@@ -783,4 +893,5 @@ module.exports = {
   updateOrderStatus,
   deleteOrder,
   financeSummary,
+  analyticsData,
 };

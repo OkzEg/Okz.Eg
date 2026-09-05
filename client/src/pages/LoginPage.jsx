@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { defaultStaffPage, isStaff } from '../utils/permissions';
 import AuthLayout from '../components/AuthLayout';
 import api from '../api/axios';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const redirect = params.get('redirect');
@@ -19,6 +20,20 @@ export default function LoginPage() {
   const [unverifiedEmail, setUnverifiedEmail] = useState(null);
   const [resendSent, setResendSent] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      const user = await googleLogin(credentialResponse.credential);
+      toast.success('Welcome back');
+      if (isStaff(user)) navigate(redirect || defaultStaffPage(user.role));
+      else navigate(redirect || '/');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Google Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -70,6 +85,26 @@ export default function LoginPage() {
         </>
       }
     >
+      <div className="mb-6 flex justify-center">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => toast.error('Google Login failed')}
+          useOneTap
+          theme="outline"
+          shape="circle"
+          text="continue_with"
+        />
+      </div>
+      
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-timber-200"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-cream px-2 text-timber-500">Or continue with email</span>
+        </div>
+      </div>
+
       <form onSubmit={submit} className="space-y-5">
         <div>
           <label htmlFor="login-email" className="label">

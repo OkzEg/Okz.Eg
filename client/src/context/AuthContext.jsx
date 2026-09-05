@@ -101,6 +101,13 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const googleLogin = async (token) => {
+    const { data } = await api.post('/auth/google', { token });
+    setUser(data);
+    setBootstrapping(false);
+    return data;
+  };
+
   const register = async (payload) => {
     const { data } = await api.post('/auth/register', payload);
     setUser(data);
@@ -111,7 +118,7 @@ export function AuthProvider({ children }) {
   const updateUser = (data) => setUser((prev) => ({ ...prev, ...data }));
 
   const value = useMemo(
-    () => ({ user, bootstrapping, login, register, logout, updateUser, setUser }),
+    () => ({ user, bootstrapping, login, googleLogin, register, logout, updateUser, setUser }),
     [user, bootstrapping]
   );
 

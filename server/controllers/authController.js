@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../lib/prisma');
 const generateToken = require('../utils/generateToken');
 const { sendError } = require('../utils/safeError');
@@ -301,4 +302,51 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { registerCustomer, verifyEmail, resendVerification, login, getMe, updateProfile };
+const googleAuth = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'No token provided' });
+
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, email_verified } = payload;
+
+    if (!email_verified) {
+      return res.status(400).json({ message: 'Google email is not verified' });
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      // Link googleId if missing
+      if (!user.googleId) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { googleId, isEmailVerified: true },
+        });
+      }
+    } else {
+      // Create new user without a password
+      user = await prisma.user.create({
+        data: {
+          email,
+          name,
+          googleId,
+          isEmailVerified: true,
+          role: 'customer',
+        },
+      });
+    }
+
+    return res.json(sanitizeUser(user));
+  } catch (error) {
+    console.error('[auth] googleAuth failed:', error.message);
+    return res.status(401).json({ message: 'Google authentication failed' });
+  }
+};
+
+module.exports = { registerCustomer, verifyEmail, resendVerification, login, getMe, updateProfile, googleAuth };

@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, MailCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { GoogleLogin } from '@react-oauth/google';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/AuthLayout';
 import AddressFields from '../components/store/AddressFields';
 
 export default function SignupPage() {
+  const { googleLogin } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const redirect = params.get('redirect') || '/';
@@ -30,6 +33,19 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const setAddress = (patch) => setForm((current) => ({ ...current, ...patch }));
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      await googleLogin(credentialResponse.credential);
+      toast.success('Account verified and logged in');
+      navigate(redirect);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Google Signup failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -118,6 +134,26 @@ export default function SignupPage() {
         </>
       }
     >
+      <div className="mb-6 flex justify-center">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => toast.error('Google Signup failed')}
+          useOneTap
+          theme="outline"
+          shape="circle"
+          text="continue_with"
+        />
+      </div>
+
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-timber-200"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-cream px-2 text-timber-500">Or sign up with email</span>
+        </div>
+      </div>
+
       <form onSubmit={submit} className="space-y-6">
         <section className="space-y-4">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-timber-400">

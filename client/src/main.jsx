@@ -28,7 +28,7 @@ if (typeof Node === 'function' && Node.prototype) {
 
 installClientErrorReporting();
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'missing_client_id';
+const googleClientId = '1002827209606-4qpvopi7ico23h2ko6apm2t01vmancd5.apps.googleusercontent.com';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

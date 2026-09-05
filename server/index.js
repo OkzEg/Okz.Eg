@@ -1,6 +1,7 @@
 const app = require('./app');
 const prisma = require('./lib/prisma');
 const { logMailStatus, startMailProbe } = require('./utils/mail');
+const { startAbandonedCartWorker } = require('./workers/abandonedCartWorker');
 
 const PORT = process.env.PORT || 5000;
 const MAX_DB_ATTEMPTS = 5;
@@ -49,6 +50,7 @@ const start = async () => {
       console.log(`Server running on port ${PORT}`);
       logMailStatus();
       startMailProbe();
+      startAbandonedCartWorker();
     });
 
     const shutdown = async (signal) => {

@@ -8,6 +8,7 @@ const {
   updateOrderStatus,
   deleteOrder,
   financeSummary,
+  analyticsData,
 } = require('../controllers/orderController');
 const {
   protect,
@@ -23,6 +24,7 @@ router.post('/guest', guestOrderLimiter, createGuestOrder);
 router.post('/', protect, orderLimiter, createOrder);
 router.get('/mine', protect, myOrders);
 router.get('/finance', protect, requireFreshStaff, adminOnly, financeSummary);
+router.get('/analytics', protect, requireFreshStaff, adminOnly, analyticsData);
 router.get('/', protect, requireFreshStaff, opsOrAdmin, listOrders);
 router.get('/:id', protect, getOrder);
 router.patch('/:id/status', protect, requireFreshStaff, opsOrAdmin, adminLimiter, updateOrderStatus);

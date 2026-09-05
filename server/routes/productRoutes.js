@@ -8,7 +8,7 @@ const {
   adjustStock,
   deleteProduct,
 } = require('../controllers/productController');
-const { listReviews, createReview, deleteReview } = require('../controllers/reviewController');
+const { listReviews, createReview, deleteReview, listPendingReviews, moderateReview } = require('../controllers/reviewController');
 const { protect, adminOnly, optionalProtect } = require('../middleware/authMiddleware');
 const { reviewLimiter, searchLimiter, adminLimiter } = require('../middleware/rateLimit');
 
@@ -16,9 +16,16 @@ const router = express.Router();
 
 router.get('/', optionalProtect, searchLimiter, listProducts);
 router.post('/resolve-photos', protect, adminOnly, resolvePhotos);
+
+// Admin review moderation
+router.get('/reviews/admin', protect, adminOnly, listPendingReviews);
+router.put('/reviews/admin/:id', protect, adminOnly, moderateReview);
+
+// Public / customer reviews
 router.get('/:id/reviews', listReviews);
-router.post('/:id/reviews', optionalProtect, reviewLimiter, createReview);
+router.post('/:id/reviews', optionalProtect, reviewLimiter, ...createReview);
 router.delete('/:id/reviews/:reviewId', protect, deleteReview);
+
 router.get('/:id', searchLimiter, getProduct);
 router.post('/', protect, adminOnly, adminLimiter, createProduct);
 router.put('/:id', protect, adminOnly, adminLimiter, updateProduct);

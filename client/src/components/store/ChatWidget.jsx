@@ -11,7 +11,7 @@ export default function ChatWidget() {
     {
       role: 'assistant',
       content:
-        "أهلاً… أنا مساعد OKZ. هساعدك تختار، وههزقك شوية لو السؤال غبي. اسأل براحتك — عربي أو English، نفس الشخصية.",
+        "Ask in English, عربي, or franco — I'll match you. Helpful… and a little rude.",
     },
   ]);
   const [input, setInput] = useState('');

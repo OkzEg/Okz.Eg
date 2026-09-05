@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Loader2, Minus } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
 import { useWishlist } from '../../context/WishlistContext';
 import { useShopActivity } from '../../context/ShopActivityContext';
+import { useCart } from '../../context/CartContext';
 import api from '../../api/axios';
 
 const LANG_KEY = 'okz_chat_lang';
@@ -22,7 +25,8 @@ function lastKnownLang() {
 
 export default function ChatWidget() {
   const { items: wishlist } = useWishlist();
-  const { events, pendingRoasts, consumePendingRoast } = useShopActivity();
+  const { addItem } = useCart();
+  const { events, pendingRoasts, consumePendingRoast, trackSmallSizeCart } = useShopActivity();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -32,6 +36,38 @@ export default function ChatWidget() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const roastBusy = useRef(false);
+
+  const applyCartAction = (cartAction) => {
+    if (!cartAction?.productId) return false;
+    addItem(
+      {
+        id: cartAction.productId,
+        name: cartAction.name,
+        photos: cartAction.photos?.length ? cartAction.photos : [cartAction.image].filter(Boolean),
+        price: cartAction.price,
+        salePrice: cartAction.salePrice,
+        isSaleActive: cartAction.isSaleActive,
+        stock: cartAction.stock,
+      },
+      cartAction.qty || 1,
+      cartAction.color || null,
+      cartAction.size || null
+    );
+    trackSmallSizeCart?.({
+      productId: cartAction.productId,
+      productName: cartAction.name,
+      size: cartAction.size || null,
+    });
+    toast.success(
+      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span>Added to cart</span>
+        <Link to="/cart" className="font-semibold underline underline-offset-2">
+          View cart
+        </Link>
+      </span>
+    );
+    return true;
+  };
 
   useEffect(() => {
     if (isOpen && !isMinimized && messagesEndRef.current) {
@@ -148,7 +184,15 @@ export default function ChatWidget() {
         activity: events.slice(0, 5),
       });
       if (data.detectedLanguage) rememberLang(data.detectedLanguage);
-      setMessages([...newMessages, data]);
+      if (data.cartAction) applyCartAction(data.cartAction);
+      setMessages([
+        ...newMessages,
+        {
+          role: 'assistant',
+          content: data.content,
+          cartAdded: Boolean(data.cartAction),
+        },
+      ]);
     } catch (error) {
       const errorMsg =
         error.response?.data?.message || 'Sorry, I am having trouble connecting right now.';

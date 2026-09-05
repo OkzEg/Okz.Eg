@@ -122,6 +122,152 @@ const extractText = (response) => {
   return '';
 };
 
+const parseAssistantPayload = (rawText) => {
+  const text = String(rawText || '').trim();
+  if (!text) return { reply: '', addToCart: null };
+
+  const tryParse = (s) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return null;
+    }
+  };
+
+  let parsed = tryParse(text);
+  if (!parsed) {
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenced) parsed = tryParse(fenced[1].trim());
+  }
+  if (!parsed) {
+    const brace = text.match(/\{[\s\S]*\}/);
+    if (brace) parsed = tryParse(brace[0]);
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    return {
+      reply: String(parsed.reply || parsed.message || parsed.content || '').trim(),
+      addToCart: parsed.addToCart && typeof parsed.addToCart === 'object' ? parsed.addToCart : null,
+    };
+  }
+
+  return { reply: text, addToCart: null };
+};
+
+const normalizeChoice = (value) => String(value || '').trim().toLowerCase();
+
+const resolveCatalogProduct = (products, draft = {}) => {
+  const id = String(draft.productId || '').trim();
+  if (id) {
+    const byId = products.find((p) => p.id === id);
+    if (byId) return byId;
+  }
+  const name = String(draft.productName || '').trim().toLowerCase();
+  if (!name) return null;
+  const exact = products.find((p) => p.name.toLowerCase() === name);
+  if (exact) return exact;
+  const partial = products.find(
+    (p) => p.name.toLowerCase().includes(name) || name.includes(p.name.toLowerCase())
+  );
+  return partial || null;
+};
+
+const availableStockFor = (product, size) => {
+  if (product?.sizes?.length && size) {
+    return Number(product.sizeStock?.[size]) || 0;
+  }
+  return Number(product?.stock) || 0;
+};
+
+const buildCartAction = (products, draft) => {
+  if (!draft || typeof draft !== 'object') {
+    return { cartAction: null, cartError: null };
+  }
+
+  const product = resolveCatalogProduct(products, draft);
+  if (!product) {
+    return { cartAction: null, cartError: 'product_not_found' };
+  }
+
+  const qty = Math.min(10, Math.max(1, Number(draft.qty) || 1));
+  const needsSize = Array.isArray(product.sizes) && product.sizes.length > 0;
+  const needsColor = Array.isArray(product.colors) && product.colors.length > 0;
+
+  let size = draft.size != null && String(draft.size).trim() ? String(draft.size).trim() : null;
+  let color = draft.color != null && String(draft.color).trim() ? String(draft.color).trim() : null;
+
+  if (needsSize) {
+    if (!size) return { cartAction: null, cartError: 'size_required' };
+    const matchedSize = product.sizes.find((s) => normalizeChoice(s) === normalizeChoice(size));
+    if (!matchedSize) return { cartAction: null, cartError: 'invalid_size' };
+    size = matchedSize;
+  } else {
+    size = null;
+  }
+
+  if (needsColor) {
+    if (!color) {
+      color = product.colors[0];
+    } else {
+      const matchedColor = product.colors.find((c) => normalizeChoice(c) === normalizeChoice(color));
+      if (!matchedColor) return { cartAction: null, cartError: 'invalid_color' };
+      color = matchedColor;
+    }
+  } else {
+    color = null;
+  }
+
+  const stock = availableStockFor(product, size);
+  if (stock < 1) return { cartAction: null, cartError: 'out_of_stock' };
+  if (qty > stock) return { cartAction: null, cartError: 'insufficient_stock' };
+
+  const price =
+    product.isSaleActive && product.salePrice != null
+      ? Number(product.salePrice)
+      : Number(product.price);
+
+  return {
+    cartAction: {
+      productId: product.id,
+      name: product.name,
+      image: Array.isArray(product.photos) ? product.photos[0] || '' : '',
+      price,
+      qty,
+      color,
+      size,
+      stock,
+      isSaleActive: Boolean(product.isSaleActive),
+      salePrice: product.salePrice != null ? Number(product.salePrice) : null,
+      photos: product.photos || [],
+    },
+    cartError: null,
+  };
+};
+
+const CHAT_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: {
+      type: 'string',
+      description: 'Customer-facing chat reply only. No JSON inside this string.',
+    },
+    addToCart: {
+      type: 'object',
+      nullable: true,
+      description:
+        'Set only when the customer clearly asked to add to cart AND all required details are known. Otherwise null.',
+      properties: {
+        productId: { type: 'string', nullable: true },
+        productName: { type: 'string', nullable: true },
+        size: { type: 'string', nullable: true },
+        color: { type: 'string', nullable: true },
+        qty: { type: 'integer', nullable: true },
+      },
+    },
+  },
+  required: ['reply'],
+};
+
 const toGeminiContents = (messages = []) => {
   const mapped = messages
     .filter((m) => m && String(m.content || '').trim())
@@ -130,10 +276,8 @@ const toGeminiContents = (messages = []) => {
       parts: [{ text: String(m.content).slice(0, 1000) }],
     }));
 
-  // Gemini multi-turn must start with a user turn (skip the local greeting).
   while (mapped.length && mapped[0].role !== 'user') mapped.shift();
 
-  // Drop empty / malformed trailing pairs and ensure roles alternate.
   const normalized = [];
   for (const turn of mapped) {
     const prev = normalized[normalized.length - 1];
@@ -146,22 +290,36 @@ const toGeminiContents = (messages = []) => {
   return normalized;
 };
 
-const generateWithFallback = async (ai, contents, systemPrompt) => {
+const generateWithFallback = async (ai, contents, systemPrompt, { jsonMode = true } = {}) => {
   let lastError;
   for (const model of CHAT_MODELS) {
     try {
+      const config = {
+        systemInstruction: systemPrompt,
+        temperature: jsonMode ? 0.75 : 0.9,
+        maxOutputTokens: 700,
+      };
+      if (jsonMode) {
+        config.responseMimeType = 'application/json';
+        config.responseSchema = CHAT_RESPONSE_SCHEMA;
+      }
+
       const response = await ai.models.generateContent({
         model,
         contents,
-        config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.9,
-          maxOutputTokens: 500,
-        },
+        config,
       });
-      const text = extractText(response);
-      if (text) return { text, model };
-      lastError = new Error(`Empty response from model ${model}`);
+      const raw = extractText(response);
+      if (!raw) {
+        lastError = new Error(`Empty response from model ${model}`);
+        continue;
+      }
+      if (!jsonMode) return { text: raw, addToCart: null, model };
+
+      const parsed = parseAssistantPayload(raw);
+      if (parsed.reply) return { text: parsed.reply, addToCart: parsed.addToCart, model };
+
+      lastError = new Error(`Could not parse JSON reply from model ${model}`);
     } catch (error) {
       lastError = error;
       console.warn(`[chatController] model ${model} failed:`, error?.message || error);
@@ -246,6 +404,7 @@ const handleChat = async (req, res) => {
         sizes: true,
         sizeStock: true,
         stock: true,
+        photos: true,
         isSaleActive: true,
         salePrice: true,
       },
@@ -265,7 +424,7 @@ const handleChat = async (req, res) => {
                 .map(([size, qty]) => `${size}:${qty}`)
                 .join(', ')
             : '';
-        return `- ${p.name} (${p.type}): ${priceStr}. Colors: ${(p.colors || []).join(', ') || 'n/a'}. Sizes: ${(p.sizes || []).join(', ') || 'n/a'}. Stock status: ${inStock ? 'IN STOCK' : 'OUT OF STOCK'}${sizeStock ? `. Size stock: ${sizeStock}` : ''}. ${p.description}`;
+        return `- id:${p.id} | ${p.name} (${p.type}): ${priceStr}. Colors: ${(p.colors || []).join(', ') || 'n/a'}. Sizes: ${(p.sizes || []).join(', ') || 'n/a'}. Stock status: ${inStock ? 'IN STOCK' : 'OUT OF STOCK'}${sizeStock ? `. Size stock: ${sizeStock}` : ''}. ${p.description}`;
       })
       .join('\n');
 
@@ -315,7 +474,16 @@ ${activityContext}
 - If they opened an out-of-stock product, roast that they browsed something unavailable, then steer to in-stock options.
 - Do not mention activity on every reply — only when it fits.
 
-${isActivityRoast ? `ACTIVITY ROAST MODE: Reply with ONE short message only (1–2 sentences). No preamble. ${activityRoastBrief(activityRoast)}` : ''}
+${isActivityRoast ? `ACTIVITY ROAST MODE: Reply with ONE short message only (1–2 sentences). No preamble. ${activityRoastBrief(activityRoast)} Set addToCart to null.` : ''}
+
+CART ACTIONS (important):
+- Output MUST be JSON with fields: reply (string), addToCart (object or null).
+- If the customer asks to add something to the cart and you have enough details, set addToCart.
+- Required for addToCart: productId from catalog (preferred) or exact productName, plus size when the product has sizes, plus color when the product has colors (if only one color, you may fill it), qty (default 1).
+- If anything required is missing, ask for it in reply and set addToCart to null.
+- Never invent product ids / names / sizes / colors outside the catalog.
+- Only add IN STOCK sizes. If out of stock, roast + suggest alternative, addToCart null.
+- After a successful addToCart, confirm in reply that it's in the cart.
 
 STYLE EXAMPLES (tone + language — invent fresh lines):
 - AR (no swear): "في من الشوز الاسود ده؟" + out of stock → "مكتوب out of stock على الصفحة… لو عايز بديل، عندنا [product] موجود."
@@ -346,12 +514,22 @@ Hard rules:
 - Never break character into a corporate polite bot.
 - Obey REPLY LANGUAGE LOCK and SWEAR SLOT above with zero exceptions.`;
 
-    const { text } = await generateWithFallback(ai, contents, systemPrompt);
+    const { text, addToCart } = await generateWithFallback(ai, contents, systemPrompt, {
+      jsonMode: true,
+    });
+
+    let cartAction = null;
+    let cartError = null;
+    if (!isActivityRoast && addToCart) {
+      ({ cartAction, cartError } = buildCartAction(products, addToCart));
+    }
 
     return res.json({
       role: 'assistant',
       content: text,
       detectedLanguage: replyLanguage,
+      cartAction,
+      cartError,
     });
   } catch (error) {
     console.error('[chatController] Error:', error?.message || error);

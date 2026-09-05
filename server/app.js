@@ -19,6 +19,7 @@ const alertRoutes = require('./routes/alertRoutes');
 const trafficRoutes = require('./routes/trafficRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const cartRoutes = require('./routes/cartRoutes');
+const marketingRoutes = require('./routes/marketingRoutes');
 const { getMailStatus } = require('./utils/mail');
 const { requestLogger } = require('./middleware/requestLogger');
 const { reportServerError } = require('./controllers/alertController');
@@ -79,6 +80,7 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/traffic', trafficRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/marketing', marketingRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });

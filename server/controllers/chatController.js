@@ -16,14 +16,12 @@ const detectReplyLanguage = (messages = []) => {
   const hasArabicScript = /[\u0600-\u06FF]/.test(text);
   if (hasArabicScript) return 'egyptian_arabic';
 
-  // Latin letters that look like Egyptian Arabizi / Franco (common markers).
   const lower = text.toLowerCase();
   const francoHints =
     /\b(el|al|fe|fi|leh|3ayez|3ayz|msh|mish|ya|wallahy|wallahi|bas|keda|kda|awl|awel|shohoz|shooz|bkam|kam|floos|flous|tawseel|tawsil|gamed|gameed|yala|yalla|sa7by|asa7by|habibi|aslan|tab|tayeb|tyb|eh|eih|3ashan|ashan|7aga|mn|men|deh|dah|di|dy|mawgood|maktoub|galnaf|odam)\b/i.test(
       lower
-    ) || /[2379]/.test(lower); // Arabizi digits: 3ayn, 7aa, 2alif, 9af
+    ) || /[2379]/.test(lower); 
 
-  // Mostly Latin without Franco markers → English.
   if (/[a-z]/i.test(text) && francoHints) return 'franco';
   if (/[a-z]/i.test(text)) return 'english';
   return 'english';
@@ -33,68 +31,19 @@ const languageDirective = (mode) => {
   if (mode === 'egyptian_arabic') {
     return `REPLY LANGUAGE LOCK (mandatory for THIS message):
 - The customer wrote Egyptian Arabic script.
-- Reply ONLY in Egyptian Arabic عامية (not فصحى).
+- Reply ONLY in Egyptian Arabic (عامية).
 - Do NOT reply in English or Franco. Product names may stay in English.`;
   }
   if (mode === 'franco') {
     return `REPLY LANGUAGE LOCK (mandatory for THIS message):
 - The customer wrote Franco / Arabizi (Egyptian Arabic in Latin letters).
-- Reply ONLY in Franco/Arabizi (e.g. "maktoub out of stock ya galnaf").
+- Reply ONLY in Franco/Arabizi.
 - Do NOT switch to Arabic script or full English sentences. Product names may stay in English.`;
   }
   return `REPLY LANGUAGE LOCK (mandatory for THIS message):
 - The customer wrote English.
 - Reply ONLY in English.
 - Do NOT reply in Arabic script or Franco.`;
-};
-
-const lastUserText = (messages = []) => {
-  const lastUser = [...messages]
-    .reverse()
-    .find((m) => m?.role === 'user' && String(m.content || '').trim());
-  return String(lastUser?.content || '').trim();
-};
-
-const looksLikeDumbQuestion = (text = '') => {
-  const t = String(text).trim();
-  if (!t) return false;
-  if (t.length <= 12) return true;
-
-  const lower = t.toLowerCase();
-  // Obvious / lazy / already-on-page style questions
-  const dumbPatterns = [
-    /^(hi|hello|hey|salam|سلام|اهلا|أهلا|ازيك|عامل ايه)\b/i,
-    /\b(is it|are they|do you have|available|in stock|out of stock)\b.*\?$/i,
-    /(موجود|في منه|فيه|في من|كام السعر|بكام|سعره ايه|out of stock|stock)/i,
-    /^(eh|eih|ايه|ايه ده|what)\b/i,
-  ];
-  return dumbPatterns.some((p) => p.test(lower) || p.test(t));
-};
-
-/**
- * Swear only when the question is dumb OR the chat is long,
- * and even then only ~1/6 of the time.
- */
-const shouldAllowSwear = (messages = []) => {
-  const userCount = messages.filter((m) => m?.role === 'user').length;
-  const text = lastUserText(messages);
-  const eligible = looksLikeDumbQuestion(text) || userCount >= 6;
-  if (!eligible) return false;
-  return Math.random() < 1 / 6;
-};
-
-const swearDirective = (allowSwear) => {
-  if (allowSwear) {
-    return `SWEAR SLOT (this turn ONLY):
-- You MAY use at most ONE allowed roast word in this reply.
-- Allowed English: shit, dumbass, stupid, dumb
-- Allowed Arabic: غبي، اهبل، عبيط، جلنف، حمار، احا
-- Allowed Franco: ghabi, ahbal, 3abeet/abeet, galnaf, 7omar/homar, a7a
-- Still roast + help. Do not pile on multiple swear words.`;
-  }
-  return `SWEAR SLOT (this turn ONLY):
-- Do NOT use any swear / insult words this turn (no shit, dumbass, stupid, dumb, غبي، اهبل، عبيط، جلنف، حمار، احا، ghabi, ahbal, galnaf, 7omar, a7a).
-- Stay sarcastic and funny WITHOUT swearing. Dry roast is fine.`;
 };
 
 const getAiClient = () => {
@@ -296,7 +245,7 @@ const generateWithFallback = async (ai, contents, systemPrompt, { jsonMode = tru
     try {
       const config = {
         systemInstruction: systemPrompt,
-        temperature: jsonMode ? 0.75 : 0.9,
+        temperature: jsonMode ? 0.7 : 0.7,
         maxOutputTokens: 700,
       };
       if (jsonMode) {
@@ -336,34 +285,34 @@ const formatActivityContext = (activity = []) => {
     .slice(0, 5)
     .map((a) => {
       if (a.type === 'small_size_cart') {
-        return `- Added "${a.productName}" size ${a.size} to cart (small size — roast bait).`;
+        return `- Added "${a.productName}" size ${a.size} to cart.`;
       }
       if (a.type === 'viewed_oos') {
-        return `- Opened out-of-stock product "${a.productName}" (roast bait).`;
+        return `- Viewed out-of-stock product "${a.productName}".`;
       }
       return `- ${a.type}: ${a.productName || 'unknown'}`;
     })
     .join('\n');
 };
 
-const activityRoastBrief = (activityRoast = {}) => {
-  if (activityRoast.type === 'small_size_cart') {
-    return `TRIGGER: Customer just added "${activityRoast.productName}" in size ${activityRoast.size} (small size).
-Write ONE short roast about picking a tiny size, then still be helpful (confirm it's in cart / offer similar).`;
+const activityPromptBrief = (activityPrompt = {}) => {
+  if (activityPrompt.type === 'small_size_cart') {
+    return `TRIGGER: Customer just added "${activityPrompt.productName}" in size ${activityPrompt.size}.
+Acknowledge they added it to the cart and offer to assist further or suggest accessories.`;
   }
-  if (activityRoast.type === 'viewed_oos') {
-    return `TRIGGER: Customer just opened "${activityRoast.productName}" which is OUT OF STOCK.
-Write ONE short roast about browsing something that's clearly unavailable, then suggest checking in-stock alternatives.`;
+  if (activityPrompt.type === 'viewed_oos') {
+    return `TRIGGER: Customer just opened "${activityPrompt.productName}" which is OUT OF STOCK.
+Politely inform them it's out of stock and suggest checking in-stock alternatives.`;
   }
-  return `TRIGGER: Minor shop activity. Write one short witty aside.`;
+  return `TRIGGER: Minor shop activity. Acknowledge and offer help.`;
 };
 
 const handleChat = async (req, res) => {
   try {
     const { messages, wishlist, activity, activityRoast } = req.body;
-    const isActivityRoast = Boolean(activityRoast && activityRoast.type);
+    const isActivityPrompt = Boolean(activityRoast && activityRoast.type);
 
-    if (!isActivityRoast && (!messages || !Array.isArray(messages))) {
+    if (!isActivityPrompt && (!messages || !Array.isArray(messages))) {
       return res.status(400).json({ message: 'Messages array is required' });
     }
 
@@ -375,13 +324,13 @@ const handleChat = async (req, res) => {
     }
 
     let contents;
-    if (isActivityRoast) {
+    if (isActivityPrompt) {
       contents = [
         {
           role: 'user',
           parts: [
             {
-              text: `React to this shop activity now. ${activityRoastBrief(activityRoast)}`,
+              text: `React to this shop activity now. ${activityPromptBrief(activityRoast)}`,
             },
           ],
         },
@@ -439,16 +388,12 @@ const handleChat = async (req, res) => {
       ? activityRoast.language
       : null;
     const replyLanguage = forcedLang || detectReplyLanguage(messages || []);
-    const allowSwear = isActivityRoast
-      ? Math.random() < 1 / 6
-      : shouldAllowSwear(messages || []);
 
-    const systemPrompt = `You are the OKZ Assistant — the store's sarcastic shopping gremlin.
-You ARE helpful, but you're also a witty asshole. Roast first, help second. Never actually refuse to help.
+    const systemPrompt = `You are the OKZ Assistant, a premium AI shopping assistant for OKZ, a high-end leather boots and gear store in Egypt.
+Your goal is to help customers find the perfect product, answer questions about OKZ, and guide them to make a purchase.
+You are extremely polite, professional, concise, and helpful. Do not be overly talkative. Use short paragraphs.
 
 ${languageDirective(replyLanguage)}
-
-${swearDirective(allowSwear)}
 
 LANGUAGE RULES (always):
 1) English message → English reply.
@@ -458,23 +403,10 @@ LANGUAGE RULES (always):
 5) Never use formal فصحى unless the customer did.
 6) Match the LATEST user message language, even if earlier turns were different.
 
-PERSONALITY:
-- Helpful jerk with sharp Egyptian street humor. Dry, savage, playful — never cruel about identity, looks, religion, politics, or trauma.
-- Roast dumb / obvious / lazy questions, then immediately give the useful answer.
-- Short replies. Punchy. Like a friend who dunks on you then solves the problem.
-- Swearing is RARE. Obey SWEAR SLOT above every turn. Default is NO swear words.
-- When swearing is allowed, use at most ONE word from the allowed list only.
-- BAN everything outside the allowed list: no fuck, bitch, ass (as slur), dick, pussy, كس، شرموطة، ابن الـ…, متناك, etc.
-- Never insult the customer's money, body, family, religion, or worth as a person. Mock the QUESTION / choice / obviousness — keep small-size jokes light and playful, not cruel.
-- Still push sales: recommend real products, guide to checkout, mention free shipping over 3,000 EGP when relevant.
-
-ACTIVITY AWARENESS (only these — do NOT invent other stalking):
+ACTIVITY AWARENESS (only these):
 ${activityContext}
-- If recent activity includes a small-size cart add, you may tease them about tiny size energy when relevant.
-- If they opened an out-of-stock product, roast that they browsed something unavailable, then steer to in-stock options.
-- Do not mention activity on every reply — only when it fits.
 
-${isActivityRoast ? `ACTIVITY ROAST MODE: Reply with ONE short message only (1–2 sentences). No preamble. ${activityRoastBrief(activityRoast)} Set addToCart to null.` : ''}
+${isActivityPrompt ? `ACTIVITY PROMPT MODE: Reply with ONE short message only (1–2 sentences). No preamble. ${activityPromptBrief(activityRoast)} Set addToCart to null.` : ''}
 
 CART ACTIONS (important):
 - Output MUST be JSON with fields: reply (string), addToCart (object or null).
@@ -482,16 +414,8 @@ CART ACTIONS (important):
 - Required for addToCart: productId from catalog (preferred) or exact productName, plus size when the product has sizes, plus color when the product has colors (if only one color, you may fill it), qty (default 1).
 - If anything required is missing, ask for it in reply and set addToCart to null.
 - Never invent product ids / names / sizes / colors outside the catalog.
-- Only add IN STOCK sizes. If out of stock, roast + suggest alternative, addToCart null.
+- Only add IN STOCK sizes. If out of stock, politely suggest an alternative, addToCart null.
 - After a successful addToCart, confirm in reply that it's in the cart.
-
-STYLE EXAMPLES (tone + language — invent fresh lines):
-- AR (no swear): "في من الشوز الاسود ده؟" + out of stock → "مكتوب out of stock على الصفحة… لو عايز بديل، عندنا [product] موجود."
-- AR (swear allowed): "مكتوب out of stock يا جلنف 😏 … لو عايز بديل، عندنا [product] موجود."
-- AR small size: "Size 39 في الكارت؟ تمام يا نجم الأقدام الصغيرة 😏 الطلب ماشي."
-- FRANCO (no swear): "maktoub out of stock 3ala el page… bas law 3ayez badil, 3andena [product] mawgood."
-- EN (swear allowed): "It literally says out of stock, dumbass 😏 … closest thing we still have is [product]."
-- Always end with a concrete next step when helping.
 
 About OKZ:
 - Premium leather boots, belts, wallets, and accessories in Egypt.
@@ -507,12 +431,10 @@ User context:
 ${wishlistContext}
 
 Hard rules:
-- If Stock status is OUT OF STOCK, say it's out of stock with a roast, then suggest an IN STOCK alternative.
+- If Stock status is OUT OF STOCK, politely say it's out of stock, then suggest an IN STOCK alternative.
 - If a specific size shows 0 in Size stock, say that size is gone and suggest available sizes.
 - Answer shipping / returns / payment confidently from the facts above.
-- Keep answers short (2–5 sentences max unless listing options). Activity roasts: 1–2 sentences max.
-- Never break character into a corporate polite bot.
-- Obey REPLY LANGUAGE LOCK and SWEAR SLOT above with zero exceptions.`;
+- Keep answers short (2–5 sentences max unless listing options). Activity prompts: 1–2 sentences max.`;
 
     const { text, addToCart } = await generateWithFallback(ai, contents, systemPrompt, {
       jsonMode: true,
@@ -520,7 +442,7 @@ Hard rules:
 
     let cartAction = null;
     let cartError = null;
-    if (!isActivityRoast && addToCart) {
+    if (!isActivityPrompt && addToCart) {
       ({ cartAction, cartError } = buildCartAction(products, addToCart));
     }
 

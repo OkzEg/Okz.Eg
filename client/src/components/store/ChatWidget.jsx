@@ -10,7 +10,8 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hi there! I am the OKZ Shopping Assistant. How can I help you find the perfect pair of boots or gear today?',
+      content:
+        "أهلاً… أنا مساعد OKZ. هساعدك تختار، وههزقك شوية لو السؤال غبي. اسأل براحتك — عربي أو English، نفس الشخصية.",
     },
   ]);
   const [input, setInput] = useState('');

@@ -64,6 +64,7 @@ model User {
   problemRequests  ProblemRequest[] @relation("CustomerProblems")
   createdProblems  ProblemRequest[] @relation("CreatedProblems")
   reviews          Review[]
+  cart             Cart?
 }
 
 model Product {
@@ -230,4 +231,15 @@ model RequestLog {
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model Cart {
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  items                Json      @default("[]")
+  abandonedEmailSentAt DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

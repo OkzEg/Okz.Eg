@@ -49,6 +49,7 @@ const StaffPromotions = lazy(() => import('./pages/staff/Promotions'));
 const StaffFinance = lazy(() => import('./pages/staff/Finance'));
 const StaffTraffic = lazy(() => import('./pages/staff/Traffic'));
 const StaffReviews = lazy(() => import('./pages/staff/Reviews'));
+const StaffMarketing = lazy(() => import('./pages/staff/Marketing'));
 
 const STAFF_PREFETCH = [
   () => import('./pages/staff/Products'),
@@ -62,6 +63,7 @@ const STAFF_PREFETCH = [
   () => import('./pages/staff/Finance'),
   () => import('./pages/staff/Traffic'),
   () => import('./pages/staff/Reviews'),
+  () => import('./pages/staff/Marketing'),
 ];
 
 function PageLoader() {
@@ -183,6 +185,7 @@ function AppRoutes() {
         <Route path="/staff/finance" element={<StaffRoute page="finance"><StaffFinance /></StaffRoute>} />
         <Route path="/staff/traffic" element={<StaffRoute page="traffic"><StaffTraffic /></StaffRoute>} />
         <Route path="/staff/reviews" element={<StaffRoute page="reviews"><StaffReviews /></StaffRoute>} />
+        <Route path="/staff/marketing" element={<StaffRoute page="marketing"><StaffMarketing /></StaffRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

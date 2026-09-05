@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useRef } from 'react';
 import api from '../api/axios';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
 
@@ -14,9 +15,35 @@ export function CartProvider({ children }) {
     }
   });
 
+  const { user } = useAuth();
+  const isInitialMount = useRef(true);
+
+  // Sync cart from backend on login
+  useEffect(() => {
+    if (user && user.token) {
+      api.get('/cart')
+        .then(({ data }) => {
+          if (data.items && data.items.length > 0) {
+            setItems(data.items);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [user]);
+
+  // Sync cart to local storage and backend on changes
   useEffect(() => {
     localStorage.setItem('cartItems', JSON.stringify(items));
-  }, [items]);
+    
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (user && user.token) {
+      api.post('/cart', { items }).catch(console.error);
+    }
+  }, [items, user]);
 
   const addItem = (product, qty = 1, color = null, size = null) => {
     setItems((prev) => {

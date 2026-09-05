@@ -7,13 +7,7 @@ export default function ChatWidget() {
   const { items: wishlist } = useWishlist();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content:
-        "Ask in English, عربي, or franco — I'll match you. Helpful… and a little rude.",
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);

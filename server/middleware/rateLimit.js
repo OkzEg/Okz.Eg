@@ -101,6 +101,13 @@ const adminLimiter = rateLimit({
   message: { message: 'Too many admin actions, please try again later' },
 });
 
+const chatLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  message: { message: 'Too many chat messages, please try again later' },
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
@@ -113,4 +120,5 @@ module.exports = {
   alertLimiter,
   searchLimiter,
   adminLimiter,
+  chatLimiter,
 };

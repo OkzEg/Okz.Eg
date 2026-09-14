@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { ShopActivityProvider } from './context/ShopActivityContext';
 import StoreHeader from './components/store/StoreHeader';
 import StoreFooter from './components/store/StoreFooter';
 import StaffLayout from './components/staff/StaffLayout';
@@ -199,6 +200,7 @@ export default function App() {
         <AuthProvider>
           <CartProvider>
             <WishlistProvider>
+              <ShopActivityProvider>
               <ToastContainer
                 position="top-center"
                 theme="light"
@@ -213,6 +215,7 @@ export default function App() {
               />
               <AppRoutes />
               <ChatWidget />
+              </ShopActivityProvider>
             </WishlistProvider>
           </CartProvider>
         </AuthProvider>

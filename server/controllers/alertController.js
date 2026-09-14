@@ -14,14 +14,23 @@ const IGNORED_MESSAGE_PATTERNS = [
   /Java object is gone/i,
   /Error invoking postMessage/i,
   /navigation_performance_logger/i,
+  /having trouble connecting right now/i,
+  /Chat is temporarily unavailable/i,
 ];
 
 const isNoiseUrl = (url = '') => /^iabjs:/i.test(String(url || ''));
 
-const shouldIgnore = (payload = {}) => {
+const shouldIgnore = (payload = {}, req) => {
   const message = String(payload.message || '');
+  const apiUrl = String(payload.apiUrl || '');
+  const ua = String(req?.headers?.['user-agent'] || '');
   if (IGNORED_MESSAGE_PATTERNS.some((pattern) => pattern.test(message))) return true;
   if (isNoiseUrl(payload.url) || isNoiseUrl(payload.stack)) return true;
+  if (/\/chat\b/i.test(apiUrl)) return true;
+  // Instagram / Facebook in-app browsers frequently emit opaque Script error noise.
+  if (/Instagram|FBAN|FBAV|IABMV/i.test(ua) && /^Script error\.?$/i.test(message)) {
+    return true;
+  }
   return false;
 };
 
@@ -82,7 +91,7 @@ const reportClientError = async (req, res) => {
       return res.status(400).json({ message: 'Message is required' });
     }
 
-    if (shouldIgnore(payload)) {
+    if (shouldIgnore(payload, req)) {
       return res.json({ ok: true, skipped: true });
     }
 
@@ -114,7 +123,7 @@ const reportServerError = (err, req) => {
       url: `${req.method} ${req.originalUrl || req.path}`,
       status: err.status && err.status >= 500 ? err.status : 500,
     };
-    if (shouldIgnore(payload)) return;
+    if (shouldIgnore(payload, req)) return;
 
     const key = fingerprint(payload);
     if (markAndCheckDuplicate(key)) return;

@@ -14,6 +14,7 @@ import {
 import api from '../api/axios';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useShopActivity } from '../context/ShopActivityContext';
 import {
   formatMoney,
   optimizeImageUrl,
@@ -139,6 +140,9 @@ export default function ProductPage() {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { isSaved, toggle } = useWishlist();
+  const activity = useShopActivity();
+  const trackSmallSizeCart = activity?.trackSmallSizeCart;
+  const trackViewedOutOfStock = activity?.trackViewedOutOfStock;
   const [product, setProduct] = useState(null);
   const [color, setColor] = useState('');
   const [size, setSize] = useState('');
@@ -157,8 +161,15 @@ export default function ProductPage() {
       setSizeError(false);
       setActivePhoto(0);
       setQty(1);
+      const stock = Number(r.data.stock) || 0;
+      if (stock < 1 && trackViewedOutOfStock) {
+        trackViewedOutOfStock({
+          productId: r.data.id,
+          productName: r.data.name,
+        });
+      }
     });
-  }, [id]);
+  }, [id, trackViewedOutOfStock]);
 
   useEffect(() => {
     setQty(1);
@@ -212,6 +223,11 @@ export default function ProductPage() {
     if (availableStock < 1) return toast.error('Out of stock');
     if (product.colors?.length && !color) return toast.error('Select a color');
     addItem({ ...product, stock: availableStock }, qty, color || null, size || null);
+    trackSmallSizeCart?.({
+      productId: product.id,
+      productName: product.name,
+      size: size || null,
+    });
     if (goCheckout) {
       navigate('/checkout');
       return;

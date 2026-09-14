@@ -117,8 +117,7 @@ const createReview = [
 
       const productId = req.params.id;
       const rating = Math.trunc(Number(req.body.rating));
-      const comment = String(req.body.comment || '').trim();
-      const guestName = String(req.body.guestName || req.body.name || '').trim().slice(0, 80);
+      const comment = String(req.body.comment || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
 
       if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
         return res.status(400).json({ message: 'Rating must be between 1 and 5' });
@@ -136,17 +135,12 @@ const createReview = [
       });
       if (!product) return res.status(404).json({ message: 'Product not found' });
 
-      let userId = null;
-      if (req.user?.id) {
-        userId = req.user.id;
-        const existing = await prisma.review.findUnique({
-          where: { productId_userId: { productId, userId } },
-        });
-        if (existing) {
-          return res.status(400).json({ message: 'You already reviewed this product' });
-        }
-      } else if (!guestName || guestName.length < 2) {
-        return res.status(400).json({ message: 'Name is required' });
+      const userId = req.user.id;
+      const existing = await prisma.review.findUnique({
+        where: { productId_userId: { productId, userId } },
+      });
+      if (existing) {
+        return res.status(400).json({ message: 'You already reviewed this product' });
       }
 
       // Upload photos to Cloudinary
@@ -167,7 +161,7 @@ const createReview = [
         data: {
           productId,
           userId,
-          guestName: userId ? null : guestName,
+          guestName: null,
           rating,
           comment,
           photos: photoUrls,

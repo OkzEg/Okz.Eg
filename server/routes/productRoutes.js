@@ -23,7 +23,7 @@ router.put('/reviews/admin/:id', protect, adminOnly, moderateReview);
 
 // Public / customer reviews
 router.get('/:id/reviews', listReviews);
-router.post('/:id/reviews', optionalProtect, reviewLimiter, ...createReview);
+router.post('/:id/reviews', protect, reviewLimiter, ...createReview);
 router.delete('/:id/reviews/:reviewId', protect, deleteReview);
 
 router.get('/:id', searchLimiter, getProduct);

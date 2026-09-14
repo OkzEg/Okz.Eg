@@ -106,7 +106,7 @@ const registerCustomer = async (req, res) => {
 
     const user = await prisma.user.create({
       data: {
-        name: String(name).trim().slice(0, 120),
+        name: String(name).replace(/[<>]/g, '').trim().slice(0, 120),
         email: normalizedEmail,
         passwordHash,
         phone: normalizedPhone,
@@ -247,7 +247,7 @@ const updateProfile = async (req, res) => {
     const { name, email, password, phone, address } = req.body;
     const data = {};
 
-    if (name) data.name = String(name).trim().slice(0, 120);
+    if (name) data.name = String(name).replace(/[<>]/g, '').trim().slice(0, 120);
 
     if (email) {
       if (!isValidEmail(email)) {

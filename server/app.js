@@ -33,7 +33,17 @@ app.disable('x-powered-by');
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://translate.google.com", "https://translate.googleapis.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://translate.googleapis.com"],
+        connectSrc: ["'self'", "https://translate.googleapis.com", "https://api.cloudinary.com"],
+        frameSrc: ["'self'", "https://translate.google.com"],
+      },
+    },
   })
 );
 app.use(compression());
@@ -46,7 +56,9 @@ const corsOrigins = String(process.env.CORS_ORIGINS || '')
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || corsOrigins.length === 0 || corsOrigins.includes(origin)) {
+      // allow requests with no origin (like mobile apps or curl requests)
+      // or if origin is in the allowed list
+      if (!origin || corsOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(new Error('Not allowed by CORS'));
